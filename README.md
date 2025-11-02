@@ -68,7 +68,9 @@ HADOOP-APACHE-SPARK/
 ## 🧠 Recursos de referencia
 
 📄 [RDD Programming Guide](https://archive.apache.org/dist/spark/docs/2.4.0/rdd-programming-guide.html)  
+📄 [API PySpark](https://archive.apache.org/dist/spark/docs/2.4.0/api/python/index.html)
 📄 [Spark SQL, DataFrames and Datasets Guide](https://archive.apache.org/dist/spark/docs/2.4.0/sql-getting-started.html)
+📄 [HDFS Commands Guide](https://hadoop.apache.org/docs/current/hadoop-project-dist/hadoop-hdfs/HDFSCommands.html)
 
 ## 🏅 Certificación
 
