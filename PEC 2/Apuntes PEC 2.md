@@ -569,3 +569,305 @@ print(top_5_palabras)
 
 > Top 5 palabras más frecuentes que terminan en vocal:
 > [('de', 5), ('la', 4), ('para', 3), ('mundo', 2), ('prueba', 2)]
+
+### **Ejercicio 4**: Optimización de Cálculos con Persistencia (*0.25 puntos*)
+
+Para reducir los tiempos de ejecución en Spark, es fundamental utilizar la persistencia de un RDD mediante el método `persist()`. Esta técnica es particularmente útil cuando se realizan múltiples operaciones repetidas sobre un mismo RDD.
+
+Cuando persistes un RDD, Spark almacena los datos en memoria (o en disco, dependiendo del nivel de persistencia, para ver mas sobre los niveles de persistencia ir a la web [Persistencia Spark](https://spark.apache.org/docs/latest/rdd-programming-guide.html#rdd-persistence)) para evitar recomputaciones cada vez que se necesita realizar una acción sobre el RDD. Esto significa que cada nodo del clúster guarda en su memoria las particiones del RDD que ha procesado, permitiendo que las siguientes operaciones sobre el RDD sean mucho más rápidas.
+
+**Medición de Rendimiento**
+
+Para medir la mejora en los tiempos de ejecución, podemos utilizar la función mágica `%%time` en un entorno Jupyter Notebook, que permite observar:
+
+- Wall clock time: Tiempo total real que lleva ejecutar una tarea, incluyendo la CPU, el tiempo de entrada/salida (I/O), y las posibles comunicaciones entre nodos en el clúster.
+- CPU time: Tiempo efectivo en que la CPU está ocupada ejecutando la tarea, excluyendo otras latencias como la de entrada/salida.
+
+En este ejercicio, se explorará el uso de la persistencia en RDDs (Resilient Distributed Datasets) utilizando PySpark. El objetivo es observar cómo la persistencia afecta al rendimiento de las operaciones de transformación y acción sobre los RDDs.
+
+- Crea un RDD a partir de una lista de números que va del 1 al 10.000.
+- Filtra el RDD para obtener solo los números mayores a 5.000 y almacena este resultado en un nuevo RDD.
+- Aplica una transformación para duplicar los valores del RDD filtrado y guárdalo en un nuevo RDD.
+
+```python
+# 4.1. Crear el RDD con numeros del 1 al 10 000
+rdd_numeros = sc.parallelize(range(1, 10001))
+
+# 4.2. Filtrar los números mayores a 5000
+rdd_filtrado = rdd_numeros.filter(lambda x: x > 5000)
+
+# 4.3. Transformar (duplicar los valores)
+rdd_duplicado = rdd_filtrado.map(lambda x: (x, x * 2))
+```
+
+- Utiliza el método collect() para recuperar y mostrar los números mayores a 5.000 y sus dobles, y mide el tiempo que tarda en ejecutarse esta operación utilizando la función mágica `%%time`.
+
+```python
+%%time
+# 4.4. Ejecutar sin persistencia
+resultado_sin_persistencia = rdd_duplicado.collect()
+
+# Mostrar los primeros 10 resultados
+print("Sin persistencia (10 primeros registros):", resultado_sin_persistencia[:10])
+```
+
+> Sin persistencia (10 primeros registros): [(5001, 10002), (5002, 10004), (5003, 10006), (5004, 10008), (5005, 10010), (5006, 10012), (5007, 10014), (5008, 10016), (5009, 10018), (5010, 10020)]
+> CPU times: user 9.43 ms, sys: 2.94 ms, total: 12.4 ms
+> Wall time: 149 ms
+
+
+- Aplica la persistencia sobre el RDD de números mayores a 5.000 para que su contenido se mantenga en memoria entre las operaciones.
+
+```python
+from pyspark import StorageLevel
+
+# 4.5.Aplicar persistencia
+rdd_filtrado.persist(StorageLevel.MEMORY_ONLY) # Opcion más eficiente para la CPU
+```
+
+> PythonRDD[60] at RDD at PythonRDD.scala:53
+
+- Vuelve a ejecutar el método collect() como antes. Compara este tiempo con el tiempo de la primera ejecución. (Puedes ejecutarlo varias veces y ver que ocurre con el tiempo de procesamiento.)
+
+```python
+# 4.6. Recalculo la transformacion sobre el RDD persistido
+rdd_doblado_persistido = rdd_filtrado.map(lambda x: (x, x * 2))
+
+%%time
+resultado_con_persistencia = rdd_doblado_persistido.collect()
+
+# Mostrar los primeros 10 resultados
+print("Con persistencia (10 primeros registros)",  resultado_con_persistencia[:10]) ## Con cada ejecución el Wall time disminuye hasta llegar a un umbral en el que varia muy poco hacia arriba y hacia abajo
+```
+
+> Con persistencia (10 primeros registros) [(5001, 10002), (5002, 10004), (5003, 10006), (5004, 10008), (5005, 10010), (5006, 10012), (5007, 10014), (5008, 10016), (5009, 10018), (5010, 10020)]
+> CPU times: user 7.47 ms, sys: 7.07 ms, total: 14.5 ms
+> Wall time: 120 ms
+
+- Deshazte de la persistencia del RDD utilizando unpersist() para liberar recursos y detén la sesión de Spark al final del ejercicio con sc.stop().
+```python
+# 4.7. Libero la memoria
+rdd_filtrado.unpersist()
+
+# Detener spark
+sc.stop()
+```
+
+Al terminar el ejercicio, analiza y comenta los resultados obtenidos, explicando cómo la persistencia afectó el rendimiento de tus cálculos.
+
+> ## Analisis y comentario de los resultados obtenidos:
+> #> Tras aplicar persistencia, el tiempo total de ejecución (Wall time) se ha reducido. 
+> #> Esto se debe a que Spark evita recalcular el RDD filtrado en memoria y reutiliza los datos cacheados. 
+> #> Además, en ejecuciones repetidas el tiempo mejora aún más, evidenciando el beneficio de la persistencia.
+
+# **Apache Spark Dataframes**
+
+En esta parte de la práctica vamos a introducir los elementos que ofrece Spark para trabajar con estructuras de datos. Veremos desde estructuras muy simples hasta estructuras complejas, donde los campos pueden a su vez tener campos anidados. En concreto utilizaremos datos de Twitter capturados en el contexto de las elecciones generales en España del 28 de abril de 2019
+
+### Configuración del entorno
+
+```python
+import findspark
+import os
+
+SPARK_HOME_PATH = "/usr/bigtop/current/spark-client/" 
+os.environ['SPARK_HOME'] = SPARK_HOME_PATH
+findspark.init(SPARK_HOME_PATH)
+
+from pyspark.sql import SparkSession
+
+spark = SparkSession.builder \
+    .appName("ActividadSparkSQL_usuario") \
+    .master("local[1]") \
+    .enableHiveSupport() \
+    .getOrCreate()
+#    .config("spark.hadoop.hive.execution.engine", "mr") \
+#    .enableHiveSupport() \
+
+print(spark.sparkContext.appName)
+print(spark.version)
+
+sc=spark.sparkContext
+```
+```python
+import re
+import os
+import pandas as pd
+from matplotlib import pyplot as plt
+from math import floor
+from pyspark import SparkConf, SparkContext, SQLContext
+from pyspark.sql import Row
+```
+```python
+SUBMIT_ARGS = "--jars /opt/cloudera/parcels/CDH-6.2.0-1.cdh6.2.0.p0.967373/jars/graphframes_graphframes-0.7.0-spark2.4-s_2.11.jar pyspark-shell"
+
+os.environ["PYSPARK_SUBMIT_ARGS"] = SUBMIT_ARGS
+```
+
+## Introducción a dataframes estructurados y operaciones sobre ellos
+
+Como ya se ha mencionado, en los siguientes ejercicis vamos a utilizar datos de Twitter que recolectamos durante las elecciones generales en España del 28 de abril de 2019. Como veremos, los tweets tienen una estructura interna bastante compleja que hemos simplificado un poco en esta práctica.
+
+Lo primero que vamos a aprender es cómo importar este tipo de datos a nuestro entorno. Uno de los tipos de archivos más comunes para guardar este formato de información es [la estructura JSON](https://en.wikipedia.org/wiki/JSON). Esta estructura permite guardar información en un texto plano de diferentes objetos siguiendo una estructura de diccionario donde cada campo tiene asignado una clave y un valor. La estructura puede ser anidada, o sea que una clave puede tener como valor otra estructura de tipo diccionario.
+
+Spark SQL permite leer datos de muchos formatos diferentes. Se os pide que [leáis el fichero JSON](https://spark.apache.org/docs/2.4.0/sql-data-sources-json.html) de la ruta ```/aula_M2.858/data/tweets28a_sample.json```. Este archivo contiene un pequeño *sample*, un 0.1% de la base de datos completa (en un siguiente apartado veremos cómo realizar este *sampleado*). En esta ocasión no se os pide especificar la estructura del dataframe ya que la función de lectura la inferirá automáticamente.
+
+**Ejemplo de lectura (Rellenar con lo correspondiente para la lectura del archivo json)**:
+
+```Python
+tweets_sample = spark.read.json(<FILL IN>)
+
+print("Loaded dataset contains %d tweets" % tweets_sample.count())
+```
+
+Para mostrar la estructura del dataset que acabamos de cargar, podéis obtener la información acerca de cómo está estructurado el DataTable utilizando el método ```printSchema()```. Tenéis que familiarizaros con esta estructura ya que será la que utilizaremos durante los próximos ejercicios. Recordad también que no todos los tweets tienen todos los campos, como por ejemplo la ubicación (campo ```place```). Cuando esto pasa el campo pasa a ser ```NULL```. Podéis ver más información sobre este tipo de datos en [este enlace](https://developer.twitter.com/en/docs/tweets/data-dictionary/overview/tweet-object).
+
+Ahora debéis introducir el ejemplo de lectura con el `<FILL IN>` relleno según corresponda para la lectura del archivo JSON. Y, a continuación, mostraréis la estructura del dataset utilizando `printSchema()`.
+
+```python
+# Cargar el dataset JSON 
+tweets_sample = spark.read.json("/aula_M2.858/data/tweets28a_sample.json")
+
+# Mostrar número total de tweets cargados
+print(f"El dataset cargado contiene {tweets_sample.count()} tweets.\n") 
+
+# Mostrar la estructura del dataset
+tweets_sample.printSchema()
+```
+
+> El dataset cargado contiene 27268 tweets.
+> 
+> root
+>  |-- _id: string (nullable = true)
+>  |-- created_at: long (nullable = true)
+>  |-- lang: string (nullable = true)
+>  |-- place: struct (nullable = true)
+>  |    |-- bounding_box: struct (nullable = true)
+>  |    |    |-- coordinates: array (nullable = true)
+>  |    |    |    |-- element: array (containsNull = true)
+>  |    |    |    |    |-- element: array (containsNull = true)
+>  |    |    |    |    |    |-- element: double (containsNull = true)
+>  |    |    |-- type: string (nullable = true)
+>  |    |-- country_code: string (nullable = true)
+>  |    |-- id: string (nullable = true)
+>  |    |-- name: string (nullable = true)
+>  |    |-- place_type: string (nullable = true)
+>  |-- retweeted_status: struct (nullable = true)
+>  |    |-- _id: string (nullable = true)
+>  |    |-- user: struct (nullable = true)
+>  |    |    |-- followers_count: long (nullable = true)
+>  |    |    |-- friends_count: long (nullable = true)
+>  |    |    |-- id_str: string (nullable = true)
+>  |    |    |-- lang: string (nullable = true)
+>  |    |    |-- screen_name: string (nullable = true)
+>  |    |    |-- statuses_count: long (nullable = true)
+>  |-- text: string (nullable = true)
+>  |-- user: struct (nullable = true)
+>  |    |-- followers_count: long (nullable = true)
+>  |    |-- friends_count: long (nullable = true)
+>  |    |-- id_str: string (nullable = true)
+>  |    |-- lang: string (nullable = true)
+>  |    |-- screen_name: string (nullable = true)
+>  |    |-- statuses_count: long (nullable = true)
+### Queries sobre dataframes complejos
+
+A continuación vamos a ver como realizar consultas sobre el dataset de los tweets. Vamos a utilizar [sentencias *SQL*](https://www.w3schools.com/sql/default.asp) (como las utilizadas en la mayoría de bases de datos relacionales).
+
+Lo primero que se debe hacer es registrar el dataframe de tweets como una tabla de SQL. Para ello utilizaremos [sqlContext.registerDataFrameAsTable()](https://spark.apache.org/docs/2.4.0/api/python/pyspark.sql.html#pyspark.sql.SQLContext.registerDataFrameAsTable). Para ejecutar comandos sql solo teneis que utilizar el metodo sql() del objecto contexto, en este caso `sqlContext`.
+
+#### Queries a través del pipeline
+
+Las tablas de Spark SQL ofrecen otro mecanismo para aplicar las transformaciones y obtener resultados similares a los que se obtendría aplicando una consulta SQL. Por ejemplo, utilizando el siguiente pipeline obtendremos el texto de todos los tweets en español:
+
+```
+tweets_sample.where("lang == 'es'").select("text")
+```
+
+Que es equivalente a la siguiente sentencia SQL:
+
+```
+SELECT text
+FROM tweets_sample
+WHERE lang == 'es'
+```
+
+Podéis consultar el [API de spark SQL](https://spark.apache.org/docs/2.4.0/api/python/pyspark.sql.html) para encontrar más información sobre como utilizar las diferentes transformaciones en tablas.
+
+### **Ejercicio 5**: Análisis de Tweets mediante DataFrames y consultas SQL (*2 puntos*)
+
+Anteriormente ya has realizado la lectura del conjunto `tweets28a_sample.json` en formato JSON. Ahora deberás asegúrate de registrar el DataFrame como una tabla SQL llamada `tweets_sample`.
+
+***Nota:*** Debido a que es posible que ejecutes estas líneas de codigo várias veces, vamos a tomar la precaución de ejecutar el comando sql para eliminar tablas antes de que las crees, ya que puede existir la posibilidad de que ya existan.
+
+`spark.sql("DROP TABLE IF EXISTS tweets_sample")`
+
+A continuación, se pide crear una tabla y registrarla con el nombre ```users_agg``` con [la información agregada](https://www.w3schools.com/sql/sql_groupby.asp) de los usuarios que tengan definido su idioma (```user.lang```) como español (```es```). En concreto se pide que la tabla contenga las siguientes columnas:
+- **screen_name:** nombre del usuario
+- **friends_count:** número máximo (ver nota) de personas a las que sigue
+- **tweets:** número de tweets realizados
+- **followers_count:** número máximo (ver nota) personas que siguen al usuario.
+
+El orden en el cual se deben mostrar los registros es orden descendente acorde al número de tweets.
+
+***Nota:*** Es importante que te fijes que el nombre de *friends* y *followers* puede diferir a lo largo de la adquisición de datos. En este caso vamos a utilizar la función de agregación `MAX` sobre cada uno de estos campos para evitar segmentar el usuario en diversas instancias.
+
+
+```python
+# Eliminar tabla si ya existe
+spark.sql("DROP TABLE IF EXISTS tweets_sample")
+
+# Registrar el DataFrame como tabla SQL
+tweets_sample.createOrReplaceTempView("tweets_sample")
+
+# Crear tabla agregada con usuarios en español
+users_agg = spark.sql("""
+    SELECT
+        user.screen_name AS screen_name,
+        MAX(user.friends_count) AS friends_count,
+        COUNT(*) AS tweets,
+        MAX(user.followers_count) AS followers_count
+    FROM tweets_sample
+    WHERE user.lang = 'es'
+    GROUP BY user.screen_name
+    ORDER BY tweets DESC
+""")
+
+# Mostrar algunos resultados
+users_agg.show(10)
+```
+
+> [Stage 36:=================================================>        (6 + 1) / 7]
+> 
+> +---------------+-------------+------+---------------+
+> |    screen_name|friends_count|tweets|followers_count|
+> +---------------+-------------+------+---------------+
+> |       anaoromi|         6258|    16|           6774|
+> |    RosaMar6254|         6208|    14|           6245|
+> |        lyuva26|         3088|    13|           3732|
+> |PisandoFuerte10|         2795|    12|           1752|
+> |     carrasquem|          147|    12|            215|
+> |       jasalo54|         1889|    11|            689|
+> |     Lordcrow11|         5002|     9|           3069|
+> |      lolalailo|         4922|     9|           3738|
+> |  PabloChabolas|         4925|     9|           4042|
+> |      kikyosanz|          154|     9|            273|
+> +---------------+-------------+------+---------------+
+> only showing top 10 rows
+
+A continuación recurriremos al [JOIN de tablas](https://www.w3schools.com/sql/sql_join.asp) para combinar la información entre tablas. Debes combinar la tabla `users_agg` y la tabla `tweets_sample` utilizando un `INNER JOIN` para obtener una nueva tabla con el nombre retweeted con la siguiente información:
+
+- _**screen_name:**_ nombre de usuario
+- _**friends_count:**_ número máximo de personas a las que sigue
+- _**followers_count:**_ número máximo de personas que siguen al usuario.
+- _**tweets:**_ número de tweets realizados por el usuario.
+- _**retweeted:**_ número de retweets obtenidos por el usuario.
+- _**ratio_tweet_retweeted:**_ ratio de retweets por número de tweets publicados 
+
+La tabla resultante tiene que estar ordenada de manera descendente según el valor de la columna `ratio_tweet_retweeted`.
+
+Por último, utilizando queries a través de pipeline, debes crear una tabla `user_retweets` a partir de la tabla `tweets_sample`, utilizando transformaciones que contenga dos columnas:
+
+- _**screen_name:**_ nombre de usuario
+- _**retweeted:**_ número de retweets
+
+Ordena la tabla en orden descendente utilizando el valor de la columna `retweeted`.
