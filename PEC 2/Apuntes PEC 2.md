@@ -871,3 +871,605 @@ Por último, utilizando queries a través de pipeline, debes crear una tabla `u
 - _**retweeted:**_ número de retweets
 
 Ordena la tabla en orden descendente utilizando el valor de la columna `retweeted`.
+
+```python
+# 5.2.1.
+# Eliminar tabla si ya existe
+spark.sql("DROP TABLE IF EXISTS users_agg")
+
+# Registrar users_agg como tabla SQL
+users_agg.createOrReplaceTempView("users_agg")
+
+# Crear tabla retweeted mediante INNER JOIN
+retweeted = spark.sql("""
+    SELECT
+        ua.screen_name,
+        ua.friends_count,
+        ua.followers_count,
+        ua.tweets,
+        COUNT(*) AS retweeted,
+        COUNT(*) / ua.tweets AS ratio_tweet_retweeted
+    FROM users_agg ua
+        INNER JOIN tweets_sample ts ON ua.screen_name = ts.retweeted_status.user.screen_name
+    GROUP BY 
+        ua.screen_name, 
+        ua.friends_count, 
+        ua.followers_count, 
+        ua.tweets
+    ORDER BY ratio_tweet_retweeted DESC
+""")
+
+# Mostrar información de la tabla
+print(f"La tabla retweeted contiene {retweeted.count()} registros.\n")
+print(f"Con las siguientes columnas: {retweeted.columns}.\n")
+retweeted.printSchema()
+
+# Mostrar los primeros resultados
+print("\nPrimeras filas de la tabla retweeted:")
+retweeted.show(10)
+```
+
+> Primeras filas de la tabla retweeted:
+> 
+> +--------------+-------------+---------------+------+---------+---------------------+
+> |   screen_name|friends_count|followers_count|tweets|retweeted|ratio_tweet_retweeted|
+> +--------------+-------------+---------------+------+---------+---------------------+
+> |          PSOE|        13635|         671073|     1|      155|                155.0|
+> |  CiudadanosCs|        92910|         511896|     1|      117|                117.0|
+> |     JuntsXCat|          202|          88515|     1|       73|                 73.0|
+> |  PartidoPACMA|         1498|         232932|     1|       63|                 63.0|
+> |  pablocasado_|         4567|         238926|     1|       50|                 50.0|
+> |voxnoticias_es|         2146|          29582|     1|       44|                 44.0|
+> |RaiLopezCalvet|         7579|          13574|     1|       43|                 43.0|
+> |        iunida|        10225|         558318|     1|       39|                 39.0|
+> |        Xuxipc|          311|         184967|     1|       37|                 37.0|
+> |       Panik81|         1587|          15374|     1|       29|                 29.0|
+> +--------------+-------------+---------------+------+---------+---------------------+
+> only showing top 10 rows
+
+
+```python
+# 5.2.2.
+# Crear tabla user_retweets mediante transformaciones con pipeline
+user_retweets = (tweets_sample
+    .filter(tweets_sample.retweeted_status.isNotNull())  # Filtrar solo tweets con retweets
+    .select("retweeted_status.user.screen_name")         # Seleccionar el screen_name
+    .groupBy("screen_name")                              # Agrupar por usuario
+    .count()                                             # Contar retweets
+    .withColumnRenamed("count", "retweeted")             # Renombrar columna
+    .orderBy("retweeted", ascending=False)               # Ordenar descendente
+)
+
+# Mostrar información de la tabla
+print(f"La tabla user_retweets contiene {user_retweets.count()} registros.\n")
+print(f"Con las siguientes columnas: {user_retweets.columns}.\n")
+user_retweets.printSchema()
+
+# Mostrar los primeros resultados
+print("Primeras filas de la tabla user_retweets:")
+user_retweets.show(10)
+```
+
+> La tabla user_retweets contiene 7664 registros.
+> 
+> Con las siguientes columnas: ['screen_name', 'retweeted'].
+> 
+> root
+>  |-- screen_name: string (nullable = true)
+>  |-- retweeted: long (nullable = false)
+> 
+> Primeras filas de la tabla user_retweets:
+> 
+> [Stage 42:=========================================>                (5 + 1) [/](https://eimtcld3.uoclabs.uoc.es/) 7]
+> 
+> +--------------+---------+
+> |   screen_name|retweeted|
+> +--------------+---------+
+> |        vox_es|      299|
+> | Santi_ABASCAL|      238|
+> |  ahorapodemos|      238|
+> |      iescolar|      166|
+> | AlbanoDante76|      161|
+> |          PSOE|      155|
+> |AntonioMaestre|      154|
+> |          KRLS|      149|
+> |        boye_g|      142|
+> |  CiudadanosCs|      117|
+> +--------------+---------+
+> only showing top 10 rows
+
+## Bases de datos HIVE y operaciones complejas
+
+Hasta ahora hemos estado trabajando con un pequeño sample de los tweets generados (el 0.1%). En esta parte de la actividad vamos a ver como trabajar y tratar con el dataset completo. Para ello vamos a utilizar tanto transformaciones sobre tablas como operaciones sobre RDD cuando sea necesario.
+
+Es importante tener en cuenta que muchas veces los datos con los que trabajamos se utilizarán en diversos proyectos. En lugar de manejar directamente los archivos, es más eficiente y organizado recurrir a una base de datos para gestionar la información. En el ecosistema de Hadoop, una de las bases de datos más utilizadas es [Apache Hive](https://hive.apache.org/). Sin embargo, es crucial entender que Hive no es una base de datos convencional. En realidad, funciona como un metastore que mapea archivos en el sistema de archivos distribuido de Hadoop (HDFS).
+
+Esto significa que Hive no almacena los datos en su propio formato de base de datos, sino que actúa como una interfaz que permite a los usuarios ejecutar consultas SQL sobre los datos almacenados en HDFS. Esto proporciona una forma eficiente de acceder y manipular grandes volúmenes de datos distribuidos sin necesidad de moverlos o convertirlos a un formato tradicional de base de datos.
+
+La manera de acceder a esta base de datos es tal y como se muestra en el siguiente código (debéis ejecutarlo).
+
+```python
+# 1. Obtener la lista de objetos 'Table'
+tables_list = spark.catalog.listTables()
+
+# 2. Convertir la lista de objetos en una lista de tuplas (Nombre, BD, Temporal)
+# Utilizamos una comprensión de lista (list comprehension)
+data_for_df = [(t.name, t.database, t.isTemporary) for t in tables_list]
+
+# 3. Definir el esquema manualmente para evitar cualquier inferencia automática
+from pyspark.sql.types import StructType, StructField, StringType, BooleanType
+
+manual_schema = StructType([
+    StructField("Nombre_Tabla", StringType(), True),
+    StructField("Base_Datos", StringType(), True),
+    StructField("Es_Temporal", BooleanType(), True)
+])
+
+# 4. Crear el DataFrame con los datos y el esquema definido
+tables_df = spark.createDataFrame(data_for_df, schema=manual_schema)
+
+# 5. Mostrar el resultado
+tables_df.show()
+```
+
+> +-----------------+----------+-----------+
+> |     Nombre_Tabla|Base_Datos|Es_Temporal|
+> +-----------------+----------+-----------+
+> |        boxscores|   default|      false|
+> |    boxscores_ext|   default|      false|
+> |boxscores_interna|   default|      false|
+> |boxscores_managed|   default|      false|
+> |    boxscores_orc|   default|      false|
+> |   boxscores_parq|   default|      false|
+> |    ext_boxscores|   default|      false|
+> |        ext_games|   default|      false|
+> |     ext_injuries|   default|      false|
+> |      ext_players|   default|      false|
+> |        ext_teams|   default|      false|
+> |            games|   default|      false|
+> |        games_ext|   default|      false|
+> |    games_interna|   default|      false|
+> |    games_managed|   default|      false|
+> |        games_orc|   default|      false|
+> |       games_parq|   default|      false|
+> |         injuries|   default|      false|
+> |     injuries_ext|   default|      false|
+> | injuries_interna|   default|      false|
+> +-----------------+----------+-----------+
+> only showing top 20 rows
+
+### Más allá de las transformaciones SQL
+
+Algunas veces vamos a necesitar obtener resultados que precisan operaciones que van más allá de lo que podemos conseguir (cómodamente) utilizando el lenguaje SQL. En esta parte de la práctica vamos a practicar cómo pasar de una tabla a un RDD, para hacer operaciones complejas, y luego volver a pasar a una tabla.
+
+Ahora viene la parte interesante. Una tabla puede convertirse en un RDD a través del atributo ```.rdd```. Este atributo guarda la información de la tabla en una lista donde cada elemento es un [objeto del tipo ```Row```](https://spark.apache.org/docs/latest/api/python/reference/pyspark.sql/api/pyspark.sql.Row). Los objetos pertenecientes a esta clase pueden verse como diccionarios donde la información de las diferentes columnas queda reflejada en forma de atributo. Por ejemplo, imaginad que tenemos una tabla con dos columnas, nombre y apellido, si utilizamos el atributo ```.rdd``` de dicha tabla obtendremos una lista con objetos del tipo row donde cada objeto tiene dos atributos: nombre y apellido. Para acceder a los atributos solo tenéis que utilizar la sintaxis *punto* de Python, e.g., ```row.nombre``` o ```row.apellido```.
+
+### **Ejercicio 6**: Análisis de Tweets Geolocalizados (*1.5 puntos*)
+
+Dada la tabla de tweets `tweets28a_sample25`, debes crear una variable `tweets` utilizando el objeto `spark` y el método `table()`. Utilizando una sentencia SQL, se requiere extraer información sobre los tweets que contienen datos geolocalizados (es decir, aquellos donde el campo `place` no es nulo) y determinar cuántos tweets se han generado desde cada lugar. Los resultados deben ser presentados en orden descendente por la cantidad de tweets.
+
+**Esquema sentencia sql**
+```Python
+tweets_place = spark.sql(<FILL IN>)
+```
+
+A continuación, crea una tabla llamada `tweets_place` que contenga dos columnas:
+
+- ***name:*** nombre del lugar desde donde se ha generado el tweet.
+- ***tweets:*** número total de tweets realizados en dicho lugar.
+
+Finalmente, muestra los 10 lugares con mayor número de tweets en la tabla resultante.
+
+Adicionalmente, crea una tabla llamada `tweets_geo` que contenga únicamente los tweets que tienen información de geolocalización, y asegúrate de que incluya el nombre del lugar. A partir de esta tabla, crea un objeto ```tweets_place_rdd``` que contenga una lista de tuplas con la información ```(name, tweets)``` sobre el nombre del lugar y el número de tweets generados desde allí.
+
+Una vez generado este RDD vamos a crear una tabla. El primer paso es generar por cada tupla un objeto Row que contenga un atributo ```name``` y un atributo ```tweets```. Ahora solo tenéis que aplicar el método ```toDF()``` para generar una tabla. Ordenad las filas de esta tabla por el número de tweets en orden descendente.
+
+El ejercicio deberá realizarse combinando tanto sentencias SQL como RDD en Apache Spark.
+
+```python
+# 6.1.
+# Cargar la tabla tweets28a_sample25 en una variable
+tweets = spark.table("tweets28a_sample25")
+
+# Mostrar información de la tabla
+print(f"La tabla tweets contiene {tweets.count()} tweets.\n")
+print(f"Con las siguientes columnas: {tweets.columns}.\n")
+tweets.printSchema()
+
+# Mostrar los primeros resultados
+print("Primeras filas de la tabla tweets:")
+tweets.show(10)
+```
+
+> La tabla tweets contiene 6354961 tweets.
+> 
+> Con las siguientes columnas: ['_id', 'created_at', 'lang', 'place', 'retweeted_status', 'text', 'user'].
+> 
+> root
+>  |-- _id: string (nullable = true)
+>  |-- created_at: timestamp (nullable = true)
+>  |-- lang: string (nullable = true)
+>  |-- place: struct (nullable = true)
+>  |    |-- bounding_box: struct (nullable = true)
+>  |    |    |-- coordinates: array (nullable = true)
+>  |    |    |    |-- element: array (containsNull = true)
+>  |    |    |    |    |-- element: array (containsNull = true)
+>  |    |    |    |    |    |-- element: double (containsNull = true)
+>  |    |    |-- type: string (nullable = true)
+>  |    |-- country_code: string (nullable = true)
+>  |    |-- id: string (nullable = true)
+>  |    |-- name: string (nullable = true)
+>  |    |-- place_type: string (nullable = true)
+>  |-- retweeted_status: struct (nullable = true)
+>  |    |-- _id: string (nullable = true)
+>  |    |-- user: struct (nullable = true)
+>  |    |    |-- followers_count: long (nullable = true)
+>  |    |    |-- friends_count: long (nullable = true)
+>  |    |    |-- id_str: string (nullable = true)
+>  |    |    |-- lang: string (nullable = true)
+>  |    |    |-- screen_name: string (nullable = true)
+>  |    |    |-- statuses_count: long (nullable = true)
+>  |-- text: string (nullable = true)
+>  |-- user: struct (nullable = true)
+>  |    |-- followers_count: long (nullable = true)
+>  |    |-- friends_count: long (nullable = true)
+>  |    |-- id_str: string (nullable = true)
+>  |    |-- lang: string (nullable = true)
+>  |    |-- screen_name: string (nullable = true)
+>  |    |-- statuses_count: long (nullable = true)
+> 
+> Primeras filas de la tabla tweets:
+> 
+> [Stage 45:>                                                         (0 + 1) [/](https://eimtcld3.uoclabs.uoc.es/) 1]
+> 
+> +-------------------+-------------------+----+-----+--------------------+--------------------+--------------------+
+> |                _id|         created_at|lang|place|    retweeted_status|                text|                user|
+> +-------------------+-------------------+----+-----+--------------------+--------------------+--------------------+
+> |1117169839657844736|2019-04-13 22:57:00|  en| null|{1117009066402955...|RT @DearAuntCrabb...|{329, 871, 547969...|
+> |1117169840802934787|2019-04-13 22:57:00|  es| null|{1117037292458262...|RT @PAH_Burgos: #...|{18, 17, 88521307...|
+> |1117169840870100994|2019-04-13 22:57:00|  es| null|{1116682791503192...|RT @ViajesFalcon:...|{1270, 356, 76286...|
+> |1117169840886882304|2019-04-13 22:57:00|  es| null|{1117157909568397...|RT @AiniApgg: Est...|{3887, 3860, 6100...|
+> |1117169841985683456|2019-04-13 22:57:00|  es| null|{1117083000343232...|RT @Santi_ABASCAL...|{137, 593, 289042...|
+> |1117169842329653248|2019-04-13 22:57:01|  es| null|{1116442625911992...|RT @CarmenPicazoC...|{111, 84, 3063577...|
+> |1117169844984610817|2019-04-13 22:57:01|  es| null|                null|@Earco1977 Pues a...|{5893, 4783, 5090...|
+> |1117169845798305792|2019-04-13 22:57:01|  es| null|{1117108350993539...|RT @FrayJosepho: ...|{3834, 1582, 6116...|
+> |1117169846037426176|2019-04-13 22:57:01|  es| null|{1116961638589059...|RT @FiloPolitics:...|{243, 136, 836025...|
+> |1117169846272315392|2019-04-13 22:57:02| und| null|                null|@CastigadorY @jus...|{1900, 1898, 2573...|
+> +-------------------+-------------------+----+-----+--------------------+--------------------+--------------------+
+> only showing top 10 rows
+
+```python
+# 6.2.
+# Consulta SQL para extraer lugares con tweets geolocalizados
+tweets_place = spark.sql("""
+    SELECT
+        place.name as name,
+        COUNT(*) AS tweets
+    FROM tweets28a_sample25
+    WHERE place IS NOT NULL
+    GROUP BY place.name
+    ORDER BY tweets DESC
+""")
+
+# Mostrar información de la tabla 
+print(f"La tabla tweets_place contiene {tweets_place.count()} lugares únicos.\n")
+print(f"Con las siguientes columnas: {tweets_place.columns}.\n")
+tweets_place.printSchema()
+
+# Mostrar los primeros resultados
+print("Primeras filas de la tabla tweets:")
+tweets_place.show(10)
+```
+
+> La tabla tweets_place contiene 4038 lugares únicos.
+> 
+> Con las siguientes columnas: ['name', 'tweets'].
+> 
+> root
+>  |-- name: string (nullable = true)
+>  |-- tweets: long (nullable = false)
+> 
+> Primeras filas de la tabla tweets:
+> 
+> [Stage 67:==================================================>       (7 + 1) [/](https://eimtcld3.uoclabs.uoc.es/) 8]
+> 
+> +-----------+------+
+> |       name|tweets|
+> +-----------+------+
+> |     Madrid|  4911|
+> |  Barcelona|  3481|
+> |    Sevilla|   959|
+> |   Valencia|   689|
+> |   Zaragoza|   597|
+> |Villamartín|   570|
+> |     Málaga|   546|
+> |     Murcia|   461|
+> |      Palma|   416|
+> |   Alicante|   407|
+> +-----------+------+
+> only showing top 10 rows
+
+```python
+# 6.3.
+# Crear tabla con tweets que tienen geolocalizacion
+tweets_geo = spark.sql("""
+    SELECT *
+    FROM tweets28a_sample25
+    WHERE place IS NOT NULL
+""")
+
+# Mostrar información de la tabla 
+print(f"\nLa tabla tweets_geo contiene {tweets_geo.count()} tweets geolocalizados.\n")
+```
+
+> La tabla tweets_geo contiene 44477 tweets geolocalizados.
+
+```python
+# 6.4.
+# Convertir la tabla tweets_geo a rdd
+tweets_place_rdd = (tweets_geo
+    .select("place.name")                    # Selecciono el nombre del lugar
+    .rdd                                     # Convierto a rdd
+    .map(lambda row: (row.name, 1))          # Crear tuplas 'nombre lugar' + 1
+    .reduceByKey(lambda a, b: a + b)         # Sumar conteos por lugar
+    .sortBy(lambda x: x[1], ascending=False) # Ordenar descendente
+)
+
+# Mostrar los primeros resultados
+print("Primeras 10 tuplas del RDD (nombre lugar, tweets):")
+tweets_place_rdd.take(10)
+```
+
+> Primeras 10 tuplas del RDD (nombre lugar, tweets):
+> 
+> [('Madrid', 4911),
+>  ('Barcelona', 3481),
+>  ('Sevilla', 959),
+>  ('Valencia', 689),
+>  ('Zaragoza', 597),
+>  ('Villamartín', 570),
+>  ('Málaga', 546),
+>  ('Murcia', 461),
+>  ('Palma', 416),
+>  ('Alicante', 407)]
+
+```python
+# 6.5.
+# Crear objetos Row a partir de las tuplas
+tweets_place_from_rdd = (tweets_place_rdd
+    .map(lambda x: Row(name = x[0], tweets = x[1])) # Tupla a Row
+    .toDF()
+    .orderBy("tweets", ascending=False)
+)
+
+# Mostrar información de la tabla 
+print(f"La tabla tweets_place_from_rdd contiene {tweets_place_from_rdd.count()} lugares únicos.\n")
+print(f"Con las siguientes columnas: {tweets_place_from_rdd.columns}.\n")
+tweets_place_from_rdd.printSchema()
+
+# Mostrar los primeros resultados
+print("Top 10 lugares con más tweets (creado desde RDD):\n")
+tweets_place_from_rdd.show(10)
+```
+
+> La tabla tweets_place_from_rdd contiene 4038 lugares únicos.
+> 
+> Con las siguientes columnas: ['name', 'tweets'].
+> 
+> root
+>  |-- name: string (nullable = true)
+>  |-- tweets: long (nullable = true)
+> 
+> Top 10 lugares con más tweets (creado desde RDD):
+> 
+> +-----------+------+
+> |       name|tweets|
+> +-----------+------+
+> |     Madrid|  4911|
+> |  Barcelona|  3481|
+> |    Sevilla|   959|
+> |   Valencia|   689|
+> |   Zaragoza|   597|
+> |Villamartín|   570|
+> |     Málaga|   546|
+> |     Murcia|   461|
+> |      Palma|   416|
+> |   Alicante|   407|
+> +-----------+------+
+> only showing top 10 rows
+
+
+## Sampling
+
+En muchas ocasiones, antes de lanzar costosos procesos, es una práctica habitual tratar con un pequeño conjunto de los datos para investigar algunas propiedades o simplemente para depurar nuestros algoritmos, a esta tarea se la llama sampling. En esta parte de la práctica vamos a ver los dos principales métodos de sampling y cómo utilizarlos.
+
+### Nota:
+Para producir un gráfico de barras utilizando [Pandas](https://pandas.pydata.org/) donde se muestre la información que acabáis de generar. Primero transformad la tabla a pandas utilizando el método `toPandas()`. Plotead la tabla resultante utilizando [la funcionalidad gráfica de pandas.](https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.plot.bar.html)
+
+### Homogéneo
+
+El primer sampling que vamos a ver es [el homogeneo](https://en.wikipedia.org/wiki/Simple_random_sample). Este sampling se basta en simplemente escoger una fracción de la población seleccionando aleatoriamente elementos de esta.
+
+Primero de todo vamos a realizar un sampling homogéneo del 1% de los tweets generados en periodo electoral sin reemplazo. Guardad en una variable ```tweets_sample``` este sampling utilizando el método ```sample``` descrito en la [API de pyspark SQL](https://spark.apache.org/docs/2.4.0/api/python/pyspark.sql.html). El seed que vais a utilizar para inicializar el generador aleatorio es 42.
+
+**Esquema**
+```Python
+seed = 42
+fraction = 0.01
+
+tweets_sample = tweets.<FILL IN>
+
+print("Number of tweets sampled: {0}".format(tweets_sample.count()))
+```
+
+### **Ejercicio 7**: Análisis del Patrón de Actividad Horaria en Twitter (*1 puntos*)
+A partir de una muestra del 1% de los tweets disponibles, se desea analizar el patrón de uso diario de Twitter, prestando especial atención a la actividad horaria. El objetivo es calcular y visualizar el promedio de tweets generados en cada hora del día. Para ello se debe crear una tabla ```tweets_timestamp``` con la información:
+- ***created_at***: timestamp de cuando se publicó el tweet.
+- ***hour***: a que hora del dia corresponde.
+- ***day***: Fecha en formato MM-dd-YY
+
+La tabla tiene que estar en orden ascendente según la columna `created_at`
+
+**Pista**: Para crear las columnas "hour" y "day" en tu tabla tweets_timestamp, puedes utilizar withColumn(). La función ```hour``` os servirá para extraer la hora del timestamp y la función ```date_format``` os permitirá generar la fecha.
+
+A continuación, utiliza la muestra de tweets para extraer la hora y fecha de publicación, y a partir de esa información, determina cuántos tweets se generan por hora. Asegúrate de ajustar el promedio de tweets para reflejar lo que ocurriría en el conjunto completo de datos y presenta los resultados en un gráfico de barras que muestre la actividad horaria promedio.
+
+---
+---
+
+## Ejercicio 7: Análisis del Patrón de Actividad Horaria en Twitter
+
+### Paso 1: Realizar *sampling* homogéneo del 1%
+
+```python
+# Configurar parámetros del sampling
+seed = 42
+fraction = 0.01
+
+# Realizar sampling sin reemplazo
+tweets_sample = tweets.sample(withReplacement=False, fraction=fraction, seed=seed)
+
+print(f"Número de tweets en el sampling: {tweets_sample.count()}")
+print(f"Porcentaje muestreado: {fraction * 100}%")
+```
+
+**Explicación:**
+
+- `sample()`: método para realizar muestreo aleatorio
+- `withReplacement=False`: muestreo sin reemplazo (cada tweet solo puede ser seleccionado una vez)
+- `fraction=0.01`: selecciona el 1% de los datos
+- `seed=42`: semilla para reproducibilidad de los resultados
+
+---
+
+### Paso 2: Crear tabla tweets_timestamp con información temporal
+
+```python
+from pyspark.sql.functions import from_unixtime, hour, date_format
+
+# Crear tabla con información de timestamp, hora y día
+tweets_timestamp = (tweets_sample
+    .withColumn("created_at", from_unixtime("created_at"))  # Convertir timestamp Unix a formato legible
+    .withColumn("hour", hour("created_at"))                  # Extraer la hora (0-23)
+    .withColumn("day", date_format("created_at", "MM-dd-yy")) # Formato fecha MM-dd-yy
+    .select("created_at", "hour", "day")                     # Seleccionar solo estas columnas
+    .orderBy("created_at", ascending=True)                   # Ordenar ascendentemente
+)
+
+# Mostrar información de la tabla
+print(f"\nLa tabla tweets_timestamp contiene {tweets_timestamp.count()} registros.\n")
+print(f"Columnas: {tweets_timestamp.columns}\n")
+tweets_timestamp.printSchema()
+
+# Mostrar primeros resultados
+print("\nPrimeras 10 filas de tweets_timestamp:")
+tweets_timestamp.show(10)
+```
+
+**Explicación:**
+
+- `from_unixtime()`: convierte el timestamp Unix (número de segundos desde 1970) a formato datetime legible
+- `hour()`: extrae la hora del día (valores de 0 a 23)
+- `date_format()`: formatea la fecha según el patrón especificado ("MM-dd-yy")
+- `withColumn()`: añade nuevas columnas al DataFrame
+- `orderBy()`: ordena los resultados por fecha de creación
+
+---
+
+### Paso 3: Calcular promedio de tweets por hora
+
+```python
+# Contar tweets por hora en la muestra
+tweets_por_hora_muestra = (tweets_timestamp
+    .groupBy("hour")                          # Agrupar por hora
+    .count()                                  # Contar tweets por grupo
+    .withColumnRenamed("count", "tweets")     # Renombrar columna
+    .orderBy("hour")                          # Ordenar por hora
+)
+
+print("\nTweets por hora en la muestra (1%):")
+tweets_por_hora_muestra.show(24)
+```
+
+**Explicación:**
+
+- Agrupamos por la columna `hour` para contar cuántos tweets hay en cada hora del día
+- La muestra representa solo el 1% de los datos totales
+
+---
+
+### Paso 4: Ajustar al conjunto completo (escalar por 100)
+
+```python
+from pyspark.sql.functions import col
+
+# Escalar los resultados al 100% de los datos
+tweets_por_hora_completo = (tweets_por_hora_muestra
+    .withColumn("tweets_promedio", col("tweets") / fraction)  # Dividir por la fracción muestreada
+    .select("hour", "tweets_promedio")                        # Seleccionar columnas relevantes
+    .orderBy("hour")
+)
+
+print("\nPromedio de tweets por hora (ajustado al 100%):")
+tweets_por_hora_completo.show(24)
+```
+
+**Explicación:**
+
+- Como tomamos el 1% (0.01), multiplicamos por 100 (o dividimos por 0.01) para estimar el total
+- Esto nos da el promedio diario de tweets por hora en el conjunto completo de datos
+
+---
+
+### Paso 5: Convertir a Pandas y crear gráfico de barras
+
+```python
+import pandas as pd
+import matplotlib.pyplot as plt
+
+# Convertir a Pandas DataFrame
+tweets_hora_pd = tweets_por_hora_completo.toPandas()
+
+# Configurar el índice como la hora para el gráfico
+tweets_hora_pd = tweets_hora_pd.set_index('hour')
+
+# Crear gráfico de barras
+plt.figure(figsize=(14, 6))
+tweets_hora_pd.plot.bar(
+    y='tweets_promedio',
+    color='steelblue',
+    edgecolor='black',
+    legend=False
+)
+
+# Personalizar el gráfico
+plt.title('Patrón de Actividad Horaria en Twitter\n(Promedio de tweets por hora del día)', 
+          fontsize=16, fontweight='bold')
+plt.xlabel('Hora del día', fontsize=12)
+plt.ylabel('Promedio de tweets', fontsize=12)
+plt.xticks(rotation=0)
+plt.grid(axis='y', alpha=0.3, linestyle='--')
+plt.tight_layout()
+
+# Mostrar el gráfico
+plt.show()
+
+# Mostrar estadísticas adicionales
+print("\n=== ESTADÍSTICAS DE ACTIVIDAD HORARIA ===")
+print(f"Hora con mayor actividad: {tweets_hora_pd['tweets_promedio'].idxmax()}:00 horas")
+print(f"Tweets en hora pico: {tweets_hora_pd['tweets_promedio'].max():.0f}")
+print(f"Hora con menor actividad: {tweets_hora_pd['tweets_promedio'].idxmin()}:00 horas")
+print(f"Tweets en hora valle: {tweets_hora_pd['tweets_promedio'].min():.0f}")
+print(f"Promedio general: {tweets_hora_pd['tweets_promedio'].mean():.0f} tweets/hora")
+```
+
+**Explicación:**
+
+- `toPandas()`: convierte el DataFrame de Spark a Pandas para visualización
+- `set_index('hour')`: establece la hora como índice para el gráfico
+- `plot.bar()`: crea un gráfico de barras
+- Se añaden personalizaciones visuales (título, etiquetas, colores, grid)
+- Se calculan estadísticas descriptivas para interpretar los patrones
+
+---
+---
