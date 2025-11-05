@@ -1333,23 +1333,19 @@ print(f"Número de tweets en el sampling: {tweets_sample.count()}")
 print(f"Porcentaje muestreado: {fraction * 100}%")
 ```
 
-**Explicación:**
 
-- `sample()`: método para realizar muestreo aleatorio
-- `withReplacement=False`: muestreo sin reemplazo (cada tweet solo puede ser seleccionado una vez)
-- `fraction=0.01`: selecciona el 1% de los datos
-- `seed=42`: semilla para reproducibilidad de los resultados
+> Número de tweets en tweets_sample 64063
+> Porcentaje muestreado: 1.0 %
 
 ---
 
 ### Paso 2: Crear tabla tweets_timestamp con información temporal
 
 ```python
-from pyspark.sql.functions import from_unixtime, hour, date_format
+from pyspark.sql.functions import hour, date_format
 
 # Crear tabla con información de timestamp, hora y día
 tweets_timestamp = (tweets_sample
-    .withColumn("created_at", from_unixtime("created_at"))  # Convertir timestamp Unix a formato legible
     .withColumn("hour", hour("created_at"))                  # Extraer la hora (0-23)
     .withColumn("day", date_format("created_at", "MM-dd-yy")) # Formato fecha MM-dd-yy
     .select("created_at", "hour", "day")                     # Seleccionar solo estas columnas
@@ -1366,13 +1362,35 @@ print("\nPrimeras 10 filas de tweets_timestamp:")
 tweets_timestamp.show(10)
 ```
 
-**Explicación:**
-
-- `from_unixtime()`: convierte el timestamp Unix (número de segundos desde 1970) a formato datetime legible
-- `hour()`: extrae la hora del día (valores de 0 a 23)
-- `date_format()`: formatea la fecha según el patrón especificado ("MM-dd-yy")
-- `withColumn()`: añade nuevas columnas al DataFrame
-- `orderBy()`: ordena los resultados por fecha de creación
+> La tabla tweets_timestamp contiene 64063 registros.
+> 
+> Columnas: ['created_at', 'hour', 'day']
+> 
+> root
+>  |-- created_at: timestamp (nullable = true)
+>  |-- hour: integer (nullable = true)
+>  |-- day: string (nullable = true)
+> 
+> 
+> Primeras 10 filas de tweets_timestamp:
+> 
+> [Stage 78:====================================>                     (5 + 1) / 8]
+> 
+> +-------------------+----+--------+
+> |         created_at|hour|     day|
+> +-------------------+----+--------+
+> |2019-04-12 06:30:52|   6|04-12-19|
+> |2019-04-12 08:32:05|   8|04-12-19|
+> |2019-04-12 10:44:57|  10|04-12-19|
+> |2019-04-12 10:45:54|  10|04-12-19|
+> |2019-04-12 10:47:56|  10|04-12-19|
+> |2019-04-12 10:48:14|  10|04-12-19|
+> |2019-04-12 10:50:26|  10|04-12-19|
+> |2019-04-12 10:50:53|  10|04-12-19|
+> |2019-04-12 10:53:19|  10|04-12-19|
+> |2019-04-12 10:53:23|  10|04-12-19|
+> +-------------------+----+--------+
+> only showing top 10 rows
 
 ---
 
@@ -1391,10 +1409,38 @@ print("\nTweets por hora en la muestra (1%):")
 tweets_por_hora_muestra.show(24)
 ```
 
-**Explicación:**
-
-- Agrupamos por la columna `hour` para contar cuántos tweets hay en cada hora del día
-- La muestra representa solo el 1% de los datos totales
+> Tweets por hora en la muestra (1%):
+> 
+> [Stage 79:===========================================>              (6 + 1) / 8]
+> 
+> +----+------+
+> |hour|tweets|
+> +----+------+
+> |   0|  4736|
+> |   1|  2299|
+> |   2|  1154|
+> |   3|   563|
+> |   4|   387|
+> |   5|   354|
+> |   6|   571|
+> |   7|  1118|
+> |   8|  1808|
+> |   9|  2318|
+> |  10|  2630|
+> |  11|  2747|
+> |  12|  2810|
+> |  13|  3017|
+> |  14|  3027|
+> |  15|  3269|
+> |  16|  3106|
+> |  17|  2927|
+> |  18|  3063|
+> |  19|  3093|
+> |  20|  3521|
+> |  21|  3742|
+> |  22|  5544|
+> |  23|  6259|
+> +----+------+
 
 ---
 
@@ -1414,12 +1460,38 @@ print("\nPromedio de tweets por hora (ajustado al 100%):")
 tweets_por_hora_completo.show(24)
 ```
 
-**Explicación:**
-
-- Como tomamos el 1% (0.01), multiplicamos por 100 (o dividimos por 0.01) para estimar el total
-- Esto nos da el promedio diario de tweets por hora en el conjunto completo de datos
-
----
+> Promedio de tweets por hora (ajustado al 100%):
+> 
+> [Stage 82:===========================================>              (6 + 1) / 8]
+> 
+> +----+---------------+
+> |hour|tweets_promedio|
+> +----+---------------+
+> |   0|       473600.0|
+> |   1|       229900.0|
+> |   2|       115400.0|
+> |   3|        56300.0|
+> |   4|        38700.0|
+> |   5|        35400.0|
+> |   6|        57100.0|
+> |   7|       111800.0|
+> |   8|       180800.0|
+> |   9|       231800.0|
+> |  10|       263000.0|
+> |  11|       274700.0|
+> |  12|       281000.0|
+> |  13|       301700.0|
+> |  14|       302700.0|
+> |  15|       326900.0|
+> |  16|       310600.0|
+> |  17|       292700.0|
+> |  18|       306300.0|
+> |  19|       309300.0|
+> |  20|       352100.0|
+> |  21|       374200.0|
+> |  22|       554400.0|
+> |  23|       625900.0|
+> +----+---------------+
 
 ### Paso 5: Convertir a Pandas y crear gráfico de barras
 
@@ -1463,13 +1535,227 @@ print(f"Tweets en hora valle: {tweets_hora_pd['tweets_promedio'].min():.0f}")
 print(f"Promedio general: {tweets_hora_pd['tweets_promedio'].mean():.0f} tweets/hora")
 ```
 
-**Explicación:**
 
-- `toPandas()`: convierte el DataFrame de Spark a Pandas para visualización
-- `set_index('hour')`: establece la hora como índice para el gráfico
-- `plot.bar()`: crea un gráfico de barras
-- Se añaden personalizaciones visuales (título, etiquetas, colores, grid)
-- Se calculan estadísticas descriptivas para interpretar los patrones
+![[Pasted image 20251105231131.png]]
+> === ESTADÍSTICAS DE ACTIVIDAD HORARIA ===
+> Hora con mayor actividad: 23:00 horas
+> 	Tweets en hora pico: 625900
+> Hora con menor actividad: 5:00 horas
+> 	Tweets en hora valle: 35400
+> Promedio general: 266929 tweets/hora
+
+
+
+### Estratificado
+
+En muchas ocasiones el sampling homogéneo no es adecuado ya que por la propia estructura de los datos determinados segmentos pueden estar sobre-representadas. Este es el caso que observamos en los tweets donde las grandes áreas urbanas están sobrerepresentadas si lo comparamos con el volumen de población. En esta actividad vamos a ver cómo aplicar esta técnica al dataset de tweets, para obtener un sampling que respete la proporción de diputados por provincia.
+
+En España, el proceso electoral asigna un volumen de diputados a cada provincia que depende de la población y de un porcentaje mínimo asignado por ley. En el contexto Hive que hemos creado previamente (```spark```) podemos encontrar una tabla (```province_28a```) que contiene información sobre las circunscripciones electorales. Cargad ésta tabla en una variable con nombre ```province```.  Cargad esta tabla en una variable con nombre ```province```.
+
+
+```python
+# YOUR CODE HERE
+raise NotImplementedError()
+
+province.limit(20).show()
+assert province.count() == 52, "Incorrect answer"
+```
+
+Para hacer un sampling estratificado lo primero que tenemos que hacer es determinar la fracción que queremos asignar a cada categoría. En este caso queremos una fracción que haga que la ratio tweets diputado sea igual para todas las capitales de provincia. Debemos tener en cuenta que la precisión de la geolocalización en Twitter es normalmente a nivel de ciudad. Por eso, para evitar incrementar la complejidad del ejercicio, vamos a utilizar los tweets en capitales de provincia como proxy de los tweets en toda la provincia.
+
+## Paso 7.2 — Extraer el nombre del lugar
+
+Primero extraemos la subcolumna `place.name` para tenerla como columna de texto normal.  
+Esto simplifica la unión posterior con `province.capital`.
+
+```python
+from pyspark.sql.functions import col
+
+# Extraer el nombre de la ciudad o lugar
+tweets_place = tweets_geo.select(
+    col("_id"),
+    col("created_at"),
+    col("lang"),
+    col("place.name").alias("place_name"),
+    col("text")
+)
+
+print(f"Total de tweets con 'place_name': {tweets_place.count()}")
+tweets_place.show(10, truncate=False)
+```
+
+```python
+# Unir los tweets con la tabla de provincias (por capital)
+tweets_province = (tweets_place
+    .join(province, tweets_place.place_name == province.capital, "inner")
+    .select("place_name", "province", "capital", "ccaa", "diputados", "created_at", "text")
+)
+
+print(f"Tweets con provincia identificada: {tweets_province.count()}")
+tweets_province.show(10, truncate=False)
+```
+
+```python
+# Contar tweets por provincia
+tweets_por_provincia = (tweets_province
+    .groupBy("province")
+    .count()
+    .withColumnRenamed("count", "tweets_total")
+    .orderBy("tweets_total", ascending=False)
+)
+
+print("\nTweets totales por provincia:")
+tweets_por_provincia.show(10)
+```
+
+
+> La tabla province contiene 52 provincias.
+> 
+> Con las siguientes columnas: ['_id', 'created_at', 'lang', 'place', 'retweeted_status', 'text', 'user'].
+> 
+> root
+>  |-- capital: string (nullable = true)
+>  |-- province: string (nullable = true)
+>  |-- ccaa: string (nullable = true)
+>  |-- population: long (nullable = true)
+>  |-- diputados: long (nullable = true)
+> 
+> Primeras filas de la tabla province:
+> +-----------+-----------+------------------+----------+---------+
+> |    capital|   province|              ccaa|population|diputados|
+> +-----------+-----------+------------------+----------+---------+
+> |     Teruel|     Teruel|            Aragón|     35691|        3|
+> |      Soria|      Soria|   Castilla y León|     39112|        2|
+> |    Segovia|    Segovia|   Castilla y León|     51683|        3|
+> |     Huesca|     Huesca|            Aragón|     52463|        3|
+> |     Cuenca|     Cuenca|Castilla-La Mancha|     54898|        3|
+> |      Ávila|      Ávila|   Castilla y León|     57697|        3|
+> |     Zamora|     Zamora|   Castilla y León|     61827|        3|
+> |Ciudad Real|Ciudad Real|Castilla-La Mancha|     74743|        5|
+> |   Palencia|   Palencia|   Castilla y León|     78629|        3|
+> | Pontevedra| Pontevedra|           Galicia|     82802|        7|
+> +-----------+-----------+------------------+----------+---------+
+> only showing top 10 rows
+> 
+> El objetivo del _sampling estratificado_ es que la **ratio de tweets por diputado sea la misma** en todas las provincias.  
+> Es decir, que el número de tweets seleccionados en cada provincia sea proporcional a su número de diputados.
+> 
+> Para ello:
+> 
+> 1. Calculamos cuántos tweets hay en cada provincia.
+> 2. Unimos esa tabla con la de diputados (`province_28a`).
+> 3. Definimos las fracciones de muestreo de forma proporcional.
+
 
 ---
+
+##  Paso 7.5 — Calcular fracciones de muestreo proporcionales a los diputados
+
+Queremos que la **ratio de tweets/diputado sea igual en todas las provincias**,  
+por lo que las fracciones de muestreo deben ser proporcionales a:
+
+[  
+\text{fracción}_i = k \times \frac{\text{diputados}_i}{\text{tweets_total}_i}  
+]
+
+donde ( k ) es una constante de escala (por ejemplo, 0.01 para un tamaño de muestra similar al 1%).
+
+```python
+from pyspark.sql.functions import lit
+
+# Unir con la tabla de provincias para acceder al número de diputados
+tweets_diputados = (tweets_por_provincia
+    .join(province.select("province", "diputados"), on="province", how="inner")
+    .withColumn("fraction", lit(0.01) * col("diputados") / col("tweets_total"))
+)
+
+# Mostrar algunas fracciones
+tweets_diputados.select("province", "diputados", "tweets_total", "fraction").show(10)
+```
+
+
+> [Stage 148:=================================================>       (7 + 1) / 8]
+> 
+> +---------+---------+------------+--------------------+
+> | province|diputados|tweets_total|            fraction|
+> +---------+---------+------------+--------------------+
+> |   Málaga|       11|         546|2.014652014652014...|
+> |  Badajoz|        6|         147|4.081632653061224E-4|
+> |   Madrid|       37|        4911|7.534107106495622E-5|
+> | Asturias|        7|         329|2.127659574468085...|
+> |   Cuenca|        3|          39|7.692307692307692E-4|
+> |   Burgos|        4|         130|3.076923076923077E-4|
+> |Cantabria|        5|         189|2.645502645502645...|
+> |   Murcia|       10|         461|2.169197396963123...|
+> |  Vizcaya|        8|         225|3.555555555555555...|
+> |    Álava|        4|         105|3.809523809523809...|
+> +---------+---------+------------+--------------------+
+> only showing top 10 rows
+> 
+
 ---
+
+##  Paso 7.6 — Crear diccionario de fracciones y aplicar _sampling estratificado_
+
+```python
+# Convertir las fracciones a diccionario
+fractions_dict = {row["province"]: row["fraction"] for row in tweets_diputados.collect()}
+
+# Aplicar sampling estratificado
+tweets_sample_stratified = tweets_province.sampleBy(
+    col="province",
+    fractions=fractions_dict,
+    seed=42
+)
+
+print(f"Total de tweets en el muestreo estratificado: {tweets_sample_stratified.count()}")
+```
+
+
+
+
+
+
+---
+
+## 🕒 Paso 7.7 — Repetir el análisis horario con la muestra estratificada
+
+Ahora puedes repetir el mismo análisis que hiciste en el muestreo homogéneo,  
+solo cambiando el dataset de entrada a `tweets_sample_stratified`.
+
+```python
+from pyspark.sql.functions import hour, date_format
+
+# Crear tabla con hora y día
+tweets_timestamp_stratified = (tweets_sample_stratified
+    .withColumn("hour", hour("created_at"))
+    .withColumn("day", date_format("created_at", "MM-dd-yy"))
+    .select("created_at", "hour", "day")
+    .orderBy("created_at", ascending=True)
+)
+
+# Agrupar por hora
+tweets_por_hora_stratified = (tweets_timestamp_stratified
+    .groupBy("hour")
+    .count()
+    .withColumnRenamed("count", "tweets")
+    .orderBy("hour")
+)
+
+# Convertir a Pandas y graficar
+tweets_hora_stratified_pd = tweets_por_hora_stratified.toPandas().set_index("hour")
+
+import matplotlib.pyplot as plt
+
+plt.figure(figsize=(14,6))
+tweets_hora_stratified_pd.plot.bar(
+    y="tweets", color="darkorange", edgecolor="black", legend=False
+)
+plt.title("Patrón de Actividad Horaria en Twitter (Muestreo Estratificado)", fontsize=16)
+plt.xlabel("Hora del día", fontsize=12)
+plt.ylabel("Tweets", fontsize=12)
+plt.xticks(rotation=0)
+plt.grid(axis="y", alpha=0.3, linestyle="--")
+plt.tight_layout()
+plt.show()
+```
