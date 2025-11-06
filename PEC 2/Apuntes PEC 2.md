@@ -1545,7 +1545,6 @@ print(f"Promedio general: {tweets_hora_pd['tweets_promedio'].mean():.0f} tweets/
 > Promedio general: 266929 tweets/hora
 
 
-
 ### Estratificado
 
 En muchas ocasiones el sampling homogéneo no es adecuado ya que por la propia estructura de los datos determinados segmentos pueden estar sobre-representadas. Este es el caso que observamos en los tweets donde las grandes áreas urbanas están sobrerepresentadas si lo comparamos con el volumen de población. En esta actividad vamos a ver cómo aplicar esta técnica al dataset de tweets, para obtener un sampling que respete la proporción de diputados por provincia.
@@ -1554,60 +1553,19 @@ En España, el proceso electoral asigna un volumen de diputados a cada provincia
 
 
 ```python
-# YOUR CODE HERE
-raise NotImplementedError()
+# 7.6.
+# Cargar la informacion
+province = spark.table("province_28a")
 
-province.limit(20).show()
-assert province.count() == 52, "Incorrect answer"
+# Mostrar información de la tabla
+print(f"La tabla province contiene {province.count()} provincias.\n")
+print(f"Con las siguientes columnas: {tweets.columns}.\n")
+province.printSchema()
+
+# Mostrar los primeros resultados
+print("Primeras filas de la tabla province:")
+province.limit(5).show()
 ```
-
-Para hacer un sampling estratificado lo primero que tenemos que hacer es determinar la fracción que queremos asignar a cada categoría. En este caso queremos una fracción que haga que la ratio tweets diputado sea igual para todas las capitales de provincia. Debemos tener en cuenta que la precisión de la geolocalización en Twitter es normalmente a nivel de ciudad. Por eso, para evitar incrementar la complejidad del ejercicio, vamos a utilizar los tweets en capitales de provincia como proxy de los tweets en toda la provincia.
-
-## Paso 7.2 — Extraer el nombre del lugar
-
-Primero extraemos la subcolumna `place.name` para tenerla como columna de texto normal.  
-Esto simplifica la unión posterior con `province.capital`.
-
-```python
-from pyspark.sql.functions import col
-
-# Extraer el nombre de la ciudad o lugar
-tweets_place = tweets_geo.select(
-    col("_id"),
-    col("created_at"),
-    col("lang"),
-    col("place.name").alias("place_name"),
-    col("text")
-)
-
-print(f"Total de tweets con 'place_name': {tweets_place.count()}")
-tweets_place.show(10, truncate=False)
-```
-
-```python
-# Unir los tweets con la tabla de provincias (por capital)
-tweets_province = (tweets_place
-    .join(province, tweets_place.place_name == province.capital, "inner")
-    .select("place_name", "province", "capital", "ccaa", "diputados", "created_at", "text")
-)
-
-print(f"Tweets con provincia identificada: {tweets_province.count()}")
-tweets_province.show(10, truncate=False)
-```
-
-```python
-# Contar tweets por provincia
-tweets_por_provincia = (tweets_province
-    .groupBy("province")
-    .count()
-    .withColumnRenamed("count", "tweets_total")
-    .orderBy("tweets_total", ascending=False)
-)
-
-print("\nTweets totales por provincia:")
-tweets_por_provincia.show(10)
-```
-
 
 > La tabla province contiene 52 provincias.
 > 
@@ -1621,83 +1579,142 @@ tweets_por_provincia.show(10)
 >  |-- diputados: long (nullable = true)
 > 
 > Primeras filas de la tabla province:
-> +-----------+-----------+------------------+----------+---------+
-> |    capital|   province|              ccaa|population|diputados|
-> +-----------+-----------+------------------+----------+---------+
-> |     Teruel|     Teruel|            Aragón|     35691|        3|
-> |      Soria|      Soria|   Castilla y León|     39112|        2|
-> |    Segovia|    Segovia|   Castilla y León|     51683|        3|
-> |     Huesca|     Huesca|            Aragón|     52463|        3|
-> |     Cuenca|     Cuenca|Castilla-La Mancha|     54898|        3|
-> |      Ávila|      Ávila|   Castilla y León|     57697|        3|
-> |     Zamora|     Zamora|   Castilla y León|     61827|        3|
-> |Ciudad Real|Ciudad Real|Castilla-La Mancha|     74743|        5|
-> |   Palencia|   Palencia|   Castilla y León|     78629|        3|
-> | Pontevedra| Pontevedra|           Galicia|     82802|        7|
-> +-----------+-----------+------------------+----------+---------+
-> only showing top 10 rows
-> 
-> El objetivo del _sampling estratificado_ es que la **ratio de tweets por diputado sea la misma** en todas las provincias.  
-> Es decir, que el número de tweets seleccionados en cada provincia sea proporcional a su número de diputados.
-> 
-> Para ello:
-> 
-> 1. Calculamos cuántos tweets hay en cada provincia.
-> 2. Unimos esa tabla con la de diputados (`province_28a`).
-> 3. Definimos las fracciones de muestreo de forma proporcional.
+> +-------+--------+------------------+----------+---------+
+> |capital|province|              ccaa|population|diputados|
+> +-------+--------+------------------+----------+---------+
+> | Teruel|  Teruel|            Aragón|     35691|        3|
+> |  Soria|   Soria|   Castilla y León|     39112|        2|
+> |Segovia| Segovia|   Castilla y León|     51683|        3|
+> | Huesca|  Huesca|            Aragón|     52463|        3|
+> | Cuenca|  Cuenca|Castilla-La Mancha|     54898|        3|
+> +-------+--------+------------------+----------+---------+
 
 
----
+El objetivo del _sampling estratificado_ es que la **ratio de tweets por diputado sea la misma** en todas las provincias.  
+Es decir, que el número de tweets seleccionados en cada provincia sea proporcional a su número de diputados.
 
-##  Paso 7.5 — Calcular fracciones de muestreo proporcionales a los diputados
+Para ello:
 
-Queremos que la **ratio de tweets/diputado sea igual en todas las provincias**,  
-por lo que las fracciones de muestreo deben ser proporcionales a:
+1. Calculamos cuántos tweets hay en cada provincia.
+2. Unimos esa tabla con la de diputados (`province_28a`).
+3. Definimos las fracciones de muestreo de forma proporcional.
 
-[  
-\text{fracción}_i = k \times \frac{\text{diputados}_i}{\text{tweets_total}_i}  
-]
-
-donde ( k ) es una constante de escala (por ejemplo, 0.01 para un tamaño de muestra similar al 1%).
 
 ```python
-from pyspark.sql.functions import lit
+# 7.7.
 
-# Unir con la tabla de provincias para acceder al número de diputados
-tweets_diputados = (tweets_por_provincia
-    .join(province.select("province", "diputados"), on="province", how="inner")
-    .withColumn("fraction", lit(0.01) * col("diputados") / col("tweets_total"))
+from pyspark.sql.functions import col
+
+# Extraer el nombre de la ciudad o lugar
+tweets_place = tweets_geo.select(
+    col("_id"),
+    col("created_at"),
+    col("lang"),
+    col("place.name").alias("place_name"),
+    col("text")
 )
 
-# Mostrar algunas fracciones
-tweets_diputados.select("province", "diputados", "tweets_total", "fraction").show(10)
+# Unir los tweets con la tabla de provincias (por capital)
+tweets_province = (tweets_place
+    .join(province, tweets_place.place_name == province.capital, "inner")
+    .select("place_name", "province", "capital", "ccaa", "diputados", "created_at", "text")
+)
+
+# Contar tweets por provincia
+tweets_por_provincia = (tweets_province
+    .groupBy("province")
+    .count()
+    .withColumnRenamed("count", "tweets_total")
+    .orderBy("tweets_total", ascending=False)
+)
+
+print("\nTweets totales por provincia:")
+tweets_por_provincia.show(10)
 ```
 
-
-> [Stage 148:=================================================>       (7 + 1) / 8]
+> Tweets totales por provincia:
 > 
-> +---------+---------+------------+--------------------+
-> | province|diputados|tweets_total|            fraction|
-> +---------+---------+------------+--------------------+
-> |   Málaga|       11|         546|2.014652014652014...|
-> |  Badajoz|        6|         147|4.081632653061224E-4|
-> |   Madrid|       37|        4911|7.534107106495622E-5|
-> | Asturias|        7|         329|2.127659574468085...|
-> |   Cuenca|        3|          39|7.692307692307692E-4|
-> |   Burgos|        4|         130|3.076923076923077E-4|
-> |Cantabria|        5|         189|2.645502645502645...|
-> |   Murcia|       10|         461|2.169197396963123...|
-> |  Vizcaya|        8|         225|3.555555555555555...|
-> |    Álava|        4|         105|3.809523809523809...|
-> +---------+---------+------------+--------------------+
+> [Stage 101:=================================================>       (7 + 1) [/](https://eimtcld3.uoclabs.uoc.es/) 8]
+> 
+> +---------+------------+
+> | province|tweets_total|
+> +---------+------------+
+> |   Madrid|        4911|
+> |Barcelona|        3481|
+> |  Sevilla|         959|
+> | Valencia|         689|
+> | Zaragoza|         597|
+> |   Málaga|         546|
+> |   Murcia|         461|
+> | Baleares|         416|
+> | Alicante|         407|
+> |  Granada|         405|
+> +---------+------------+
 > only showing top 10 rows
-> 
 
----
+Resaltar que como se indica en el enunciado, solo se incluyen tweets con geolocalización en capitales. Es decir, el conteo total será menor puesto que hay tweets geolocalizados fuera de las capitales de provincia.
 
-##  Paso 7.6 — Crear diccionario de fracciones y aplicar _sampling estratificado_
+En el apartado 7.8. se realiza un **muestreo estratificado del conjunto de tweets**, ajustando la proporción de selección por provincia según su número de diputados. De este modo, obtenemos una muestra más representativa del peso político de cada territorio, corrigiendo el sesgo del muestreo homogéneo, en el que las provincias con más actividad dominaban los resultados. 
+
+Para ello, se calcula una fracción base proporcional a diputados / tweets_total, que se ajusta mediante una constante de escala (k) hasta alcanzar un tamaño de muestra aproximado del 1 % del total.
+
+Finalmente, se aplica la función `sampleBy()` de PySpark con esas fracciones, obteniendo:
+
 
 ```python
+# 7.8.
+
+from pyspark.sql.functions import col, lit
+
+# Calcular ratio diputados/tweets
+tweets_diputados = (
+    tweets_por_provincia
+    .join(province.select("province", "diputados"), on="province", how="inner")
+    .filter(col("tweets_total") > 0)
+    .withColumn("raw_fraction", col("diputados") / col("tweets_total"))
+)
+
+# Calcular constante k base
+target_fraction = 0.01  # tamaño de muestra deseado (1%)
+sum_raw = tweets_diputados.agg({"raw_fraction": "sum"}).collect()[0][0]
+k_base = target_fraction / sum_raw
+
+# Escalar manualmente (ajustar el factor hasta obtener el tamaño deseado)
+scale_factor = 130   # prueba con 100 o 500 para obtener más tweets
+k = k_base * scale_factor
+
+print(f"Constante de escala base = {k_base:.6f}, ajustada = {k:.6f}")
+
+# Calcular fracciones finales
+tweets_diputados = tweets_diputados.withColumn("fraction", lit(k) * col("raw_fraction"))
+
+# Crear diccionario y aplicar muestreo
+fractions_dict = {row["province"]: row["fraction"] for row in tweets_diputados.collect()}
+
+tweets_sample_stratified = tweets_province.sampleBy(
+    col="province",
+    fractions=fractions_dict,
+    seed=42
+)
+
+# Comprobar tamaño resultante
+total = tweets_province.count()
+sampled = tweets_sample_stratified.count()
+print(f"Muestra: {sampled} / Total: {total} = {sampled/total:.2%}")
+
+```
+
+> Constante de escala base = 0.003808, ajustada = 0.495096
+> 
+> [Stage 122:=================================================>       (7 + 1) [/](https://eimtcld3.uoclabs.uoc.es/) 8]
+> 
+> Muestra: 165 / Total: 17751 = 0.93%
+
+El resultado es una muestra equilibrada, donde cada provincia está representada según su relevancia política.
+
+
+```python
+# 7.9.
 # Convertir las fracciones a diccionario
 fractions_dict = {row["province"]: row["fraction"] for row in tweets_diputados.collect()}
 
@@ -1708,22 +1725,19 @@ tweets_sample_stratified = tweets_province.sampleBy(
     seed=42
 )
 
-print(f"Total de tweets en el muestreo estratificado: {tweets_sample_stratified.count()}")
+total = tweets_province.count()
+sampled = tweets_sample_stratified.count()
+print(f"Muestra: {sampled} / Total: {total} = {sampled/total:.2%}")
 ```
 
+> [Stage 132:=================================================>       (7 + 1) [/](https://eimtcld3.uoclabs.uoc.es/) 8]
+> 
+> Muestra: 165 / Total: 17751 = 0.93%
 
-
-
-
-
----
-
-## 🕒 Paso 7.7 — Repetir el análisis horario con la muestra estratificada
-
-Ahora puedes repetir el mismo análisis que hiciste en el muestreo homogéneo,  
-solo cambiando el dataset de entrada a `tweets_sample_stratified`.
 
 ```python
+# 7.10
+# REPETIR ANALISIS HORARIO CON LA MUESTRA ESTRATIFICADA
 from pyspark.sql.functions import hour, date_format
 
 # Crear tabla con hora y día
@@ -1759,3 +1773,489 @@ plt.grid(axis="y", alpha=0.3, linestyle="--")
 plt.tight_layout()
 plt.show()
 ```
+
+
+Para hacer un sampling estratificado lo primero que tenemos que hacer es determinar la fracción que queremos asignar a cada categoría. En este caso queremos una fracción que haga que la ratio tweets diputado sea igual para todas las capitales de provincia. Debemos tener en cuenta que la precisión de la geolocalización en Twitter es normalmente a nivel de ciudad. Por eso, para evitar incrementar la complejidad del ejercicio, vamos a utilizar los tweets en capitales de provincia como proxy de los tweets en toda la provincia.
+
+### **Ejercicio 8**: Análisis de la Relación entre Tweets y Diputados por Provincia (*0.75 puntos*)
+
+Lo primero que tenéis que hacer es crear un tabla ```info_tweets_province``` que debe contener:
+- ***capital:*** nombre de la capital de provincia.
+- ***tweets:*** número de tweets geolocalizados en cada capital
+- ***diputados:*** diputados que asignados a la provincia.
+- ***ratio_tweets_diputado:*** número de tweets por diputado.
+
+Debéis ordenar la lista por ```ratio_tweets_diputado``` en orden ascendente.
+
+***Nota:*** Podéis realizar este ejercicio de muchas maneras, probablemente la más fácil es utilizar la tabla ```tweets_place``` que habéis generado en el ejercicio 5. Recordad cómo utilizar el ```join()```
+
+
+```python
+# 7.8.
+
+from pyspark.sql.functions import col, count, round
+
+# Agrupar los tweets por nombre de lugar (capital)
+#    - Cada fila del dataset original representa un tweet individual.
+#    - Aquí contamos cuántos tweets hay en cada capital.
+tweets_place_count = (
+    tweets_place
+    .groupBy("place_name")
+    .agg(count("*").alias("tweets"))
+)
+
+# Unir con la tabla de provincias
+#    - En "province" la columna se llama "capital".
+#    - En "tweets_place_count" la columna se llama "place_name".
+#    - Se unen por coincidencia entre ambas.
+
+info_tweets_province = (
+    tweets_place_count
+    .join(
+        province,
+        tweets_place_count["place_name"] == province["capital"],
+        how="inner"
+    )
+    .select(
+        col("capital"),
+        col("tweets"),
+        col("diputados")
+    )
+    .withColumn(
+        "ratio_tweets_diputado",
+        round(col("tweets") / col("diputados"), 2)
+    )
+    .orderBy(col("ratio_tweets_diputado").asc())
+)
+
+# Registrar como vista temporal
+info_tweets_province.createOrReplaceTempView("info_tweets_province")
+
+# Mostrar resumen y primeras filas
+print(f"La tabla info_tweets_province contiene {info_tweets_province.count()} registros.\n")
+print(f"Columnas: {info_tweets_province.columns}\n")
+
+info_tweets_province.show(10, truncate=False)
+
+```
+
+> La tabla info_tweets_province contiene 50 registros.
+> 
+> Columnas: ['capital', 'tweets', 'diputados', 'ratio_tweets_diputado']
+> 
+> [Stage 155:=================================================>       (7 + 1) [/](https://eimtcld3.uoclabs.uoc.es/) 8]
+> 
+> +-----------+------+---------+---------------------+
+> |capital    |tweets|diputados|ratio_tweets_diputado|
+> +-----------+------+---------+---------------------+
+> |Teruel     |8     |3        |2.67                 |
+> |Pontevedra |29    |7        |4.14                 |
+> |Zamora     |23    |3        |7.67                 |
+> |Huesca     |26    |3        |8.67                 |
+> |Segovia    |28    |3        |9.33                 |
+> |Cádiz      |108   |9        |12.0                 |
+> |Soria      |25    |2        |12.5                 |
+> |Cuenca     |39    |3        |13.0                 |
+> |Ciudad Real|67    |5        |13.4                 |
+> |Lugo       |56    |4        |14.0                 |
+> +-----------+------+---------+---------------------+
+> only showing top 10 rows
+
+
+```python
+# VARIABLES DADAS
+output = info_tweets_province.first()
+maximum_ratio = floor(output.ratio_tweets_diputado * 100) / 100
+print(f"El ratio mínimo (maximum_ratio) es: {maximum_ratio} tweets por diputado.\n")
+```
+
+> El ratio mínimo (maximum_ratio) es: 2.67 tweets por diputado.
+
+A continuación, vamos a necesitar es un diccionario con nombre ```ratios``` donde cada capital de provincia es una llave y su valor asociado es la fracción de tweets que vamos a samplear. En este caso lo que queremos es que la ratio de tweets por cada diputado sea similar para cada capital de provincia.
+
+Como queremos que el sampling sea lo más grande posible y no queremos que ninguna capital este infrarepresentada el ratio de tweets por diputado será el valor más pequeño podéis observar en la tabla ```info_tweets_province```, que corresponde a 11.66 tweets por diputado en Teruel. Tenéis este valor guardado en la variable ```maximum_ratio```.
+
+*Nota:* El método ```collectAsMap()``` transforma un PairRDD en un diccionario.
+
+Por último, genera una tabla ```geo_tweets``` con todos los tweets geolocalizados. Ahora ya estamos en disposición de hacer el sampling estratificado por población. Para ello podéis utilizar el método ```sampleBy()```. Utilizad 42 como seed del generador pseudoaleatorio.
+
+```python
+import math
+from pyspark.sql.functions import col
+
+# Crear un RDD (clave-valor) con la proporción de cada capital
+ratios_rdd = (
+    info_tweets_province
+    .rdd
+    .map(lambda row: (row.capital, maximum_ratio / row.ratio_tweets_diputado))
+)
+
+# Convertir a diccionario
+ratios = ratios_rdd.collectAsMap()
+
+print("Ejemplo de ratios calculadas:")
+for i, (cap, val) in enumerate(ratios.items()):
+    print(f"  {cap}: {val:.4f}")
+    if i >= 5:
+        break
+
+# Crear tabla geo_tweets con tweets geolocalizados
+geo_tweets = tweets_sample.filter(col("place").isNotNull())
+geo_tweets.createOrReplaceTempView("geo_tweets")
+
+print(f"\nLa tabla geo_tweets contiene {geo_tweets.count()} tweets geolocalizados.\n")
+
+# Muestreo estratificado
+geo_tweets_sampled = geo_tweets.sampleBy(
+    col("place.name"),
+    fractions=ratios,
+    seed=42
+)
+
+print(f"El dataset muestreado contiene {geo_tweets_sampled.count()} tweets.\n")
+geo_tweets_sampled.show(10, truncate=False)
+
+```
+
+
+> Ejemplo de ratios calculadas:
+>   Teruel: 1.0000
+>   Pontevedra: 0.6449
+>   Zamora: 0.3481
+>   Huesca: 0.3080
+>   Segovia: 0.2862
+>   Cádiz: 0.2225
+> 
+> La tabla geo_tweets contiene 463 tweets geolocalizados.
+> 
+> El dataset muestreado contiene 6 tweets.
+> 
+> [Stage 183:======================================>                  (2 + 1) [/](https://eimtcld3.uoclabs.uoc.es/) 3]
+> 
+> +-------------------+-------------------+----+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------+----------------+--------------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------------------------+
+> |_id                |created_at         |lang|place                                                                                                                                                                  |retweeted_status|text                                                                                                                                        |user                                                    |
+> +-------------------+-------------------+----+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------+----------------+--------------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------------------------+
+> |1117416712389976065|2019-04-14 15:17:59|es  |{{[[[2.052477, 41.317048], [2.052477, 41.468266], [2.229978, 41.468266], [2.229978, 41.317048]]], Polygon}, ES, null, Barcelona, city}                                 |null            |@MisterandRufus @lolalailo @salvadelpino @pedritoMonti @InesArrimadas @maitepagaza @ShaAcabat Hace más de 80 años a… [https://t.co/NM6Oegfrsj|{4976](https://t.co/NM6Oegfrsj|%7B4976), 5071, 873121031799451648, es, Xus20102278, 32977}|
+> |1119632207646208001|2019-04-20 18:01:34|es  |{{[[[-16.343595, 28.409769], [-16.343595, 28.589393], [-16.119363, 28.589393], [-16.119363, 28.409769]]], Polygon}, ES, 7974acce42d034d5, Santa Cruz de Tenerife, city}|null            |@JRhodesPianist @Santi_ABASCAL Coño, nos salió violento el nota                                                                             |{98, 488, 1398219451, es, sisifo1, 5622}                |
+> |1118435344670765057|2019-04-17 10:45:40|es  |{{[[[-2.98601, 43.213654], [-2.98601, 43.290145], [-2.880325, 43.290145], [-2.880325, 43.213654]]], Polygon}, ES, cd43ea85d651af92, Bilbao, city}                      |null            |@ahorapodemos @Irene_Montero_ Afirmaciones de niño pequeño...esa es la catadura moral de vuestra concubina. Ni un s… [https://t.co/trdCWI08kp|{46](https://t.co/trdCWI08kp|%7B46), 194, 914424236365754369, es, michel_nada_mas, 6040}|
+> |1118182792439922688|2019-04-16 18:02:07|und |{{[[[-3.699796, 37.135903], [-3.699796, 37.224915], [-3.496139, 37.224915], [-3.496139, 37.135903]]], Polygon}, ES, 387b00909c2e7031, Granada, city}                   |null            |@AlbertoTPaneque @Ortega_Smith @Esquerra_ERC @vox_es #psoe #lacarolina #jaen #españa #juntadeandalucia #sevilla #vox [https://t.co/X30KJReBxv|{746](https://t.co/X30KJReBxv|%7B746), 1591, 3769727475, es, pilireyes10, 13561}         |
+> |1118235726037049344|2019-04-16 21:32:27|es  |{{[[[-6.802646, 39.155307], [-6.802646, 39.647136], [-6.078928, 39.647136], [-6.078928, 39.155307]]], Polygon}, ES, 31f494a9d78689b0, Cáceres, city}                   |null            |Me encanta como @actua_digital ha copado las zonas más importantes de Cáceres poniendo carteles sin presentar candi… [https://t.co/R0eQwG0alx|{324](https://t.co/R0eQwG0alx|%7B324), 361, 47133114, es, KojieKO, 39761}                |
+> |1117129920709300225|2019-04-13 20:18:23|de  |{{[[[-2.98601, 43.213654], [-2.98601, 43.290145], [-2.880325, 43.290145], [-2.880325, 43.213654]]], Polygon}, ES, null, Bilbao, city}                                  |null            |Vox fuera!                                                                                                                                  |{171, 284, 167035258, es, mijangosjavier, 1616}         |
+> +-------------------+-------------------+----+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------+----------------+--------------------------------------------------------------------------------------------------------------------------------------------+--------------------------------------------------------+
+
+
+## Introducción a los datos relacionales
+
+El hecho de trabajar con una base de datos que contiene información generada en una red social nos permite introducir el concepto de datos relacionales. Podemos definir datos relacionales como aquellos en los que existen relaciones entre las entidades que constituyen la base de datos. Si estas relaciones son binarias, relaciones 1 a 1, podemos representar las relaciones como un grafo compuesto por un conjunto de vértices $\mathcal{V}$ y un conjunto de aristas $\mathcal{E}$ que los relacionan.
+
+En el caso de grafos que emergen de manera orgánica, este tipo de estructura va más allá de los grafos regulares que seguramente conocéis. Este tipo de estructuras se conocen como [redes complejas](https://es.wikipedia.org/wiki/Red_compleja). El estudio de la estructura y dinámicas de este tipo de redes ha contribuido a importantes resultados en campos tan dispares como la física, la sociología, la ecología o la medicina.
+
+![complex_network](https://images.squarespace-cdn.com/content/5150aec6e4b0e340ec52710a/1364574727391-XVOFAB9P6GHKTDAH6QTA/lastfm_800_graph_white.png?content-type=image%2Fpng)
+
+En esta última parte de la práctica vamos a trabajar con este tipo de datos. En concreto vamos a modelar uno de las posibles relaciones presentes en el dataset, la red de retweets.
+
+#### Construcción de la edgelist
+
+Lo primero se os pide es que generéis la red. Hay diversas maneras de representar una red compleja, por ejemplo, si estuvierais interesados en trabajar en ellas desde el punto de vista teórico, la manera más habitual de representarlas es utilizando una [matriz de adyacencia](https://es.wikipedia.org/wiki/Matriz_de_adyacencia). En esta práctica vamos a centrarnos en el aspecto computacional, una de las maneras de más eficientes (computacionalmente hablando) de representar una red es mediante su [*edge list*](https://en.wikipedia.org/wiki/Edge_list), una tabla que especifica la relación a parejas entre las entidades.
+
+Las relaciones pueden ser bidireccionales o direccionales y tener algún peso asignado o no (weighted or unweighted). En el caso que nos ocupa, estamos hablando de una red dirigida, un usuario retuitea a otro, y podemos pensarla teniendo en cuenta cuántas veces esto ha pasado.
+
+#### Centralidad de grado
+
+Uno de los descriptores más comunes en el análisis de redes es el grado. El grado cuantifica cuántas aristas están conectadas a cada vértice~s~. En el caso de redes dirigidas como la que acabamos de crear este descriptor está descompuesto en el:
+- **in degree**: cuantas aristas apuntan al nodo
+- **out degree**: cuantas aristas salen del nodo
+
+Si haces un ranquing de estos valores vais a obtener una medida de centralidad, la [centralidad de grado](https://en.wikipedia.org/wiki/Centrality#Degree_centrality), de cada uno de los nodos.
+
+### **Ejercicio 9**: Análisis de Interacciones de Retweets y Grados de Usuario (*0.75 puntos*)
+
+A partir de una muestra homogénea del 1% de los tweets, con la semilla 42 para garantizar la reproducibilidad, realiza un análisis de las interacciones de retweets entre usuarios en la red social.
+
+**Esquema**
+```Python
+seed = 42
+sample = tweets.<FILL IN>
+```
+Crea una tabla ```edgelist``` con la siguiente información:
+- ***src:*** usuario que retuitea
+- ***dst:*** usuario que es retuiteado
+- ***weight:*** número de veces que un usuario retuitea a otro.
+
+Filtrar el resultado para que contenga sólo las relaciones con un weight igual o mayor a dos.
+
+A continuación, genera una tabla `outDegree` con la información:
+- ***screen_name:*** nombre del usuario.
+- ***outDegree:*** out degree del nodo.
+
+Ordenado la tabla por out degree en orden descendente.
+
+Se os pide ahora que generéis una tabla `inDegree` con la información:
+- ***screen_name:*** nombre del usuario.
+- ***inDegree:*** in degree del nodo.
+
+Ordenad la tabla por in degree en orden descendente.
+
+```python
+from pyspark.sql.functions import col, lower, regexp_extract, count
+from pyspark.sql import functions as F
+
+# Crear muestra homogénea del 1%
+seed = 42
+
+sample = tweets.sample(fraction=0.01, seed=seed)
+print(f"Muestra creada: {sample.count()} tweets seleccionados (~1%)\n")
+
+# Extraer relaciones de retweet (usuario que retuitea → usuario retuiteado)
+# Añadimos columna con el nombre del usuario retuiteado 
+retweets = (
+    sample
+    .filter(col("text").startswith("RT @"))  # nos quedamos solo con los retweets
+    .withColumn("src", lower(col("user.screen_name")))  # usuario que hace el retweet
+    .withColumn(
+        "dst",
+        lower(regexp_extract(col("text"), r"^RT @([A-Za-z0-9_]+):", 1))
+    )  # usuario que es retuiteado
+    .filter(col("dst") != "")  # eliminamos casos donde no se haya detectado usuario
+)
+
+print(f"Total de retweets detectados: {retweets.count()}\n")
+
+# Crear la edgelist (src, dst, weight)
+# Agrupamos por par (src, dst) y contamos cuántas veces se repite la relación
+edgelist = (
+    retweets
+    .groupBy("src", "dst")
+    .agg(count("*").alias("weight"))
+    .filter(col("weight") >= 2)  # solo relaciones con 2 o más retweets
+    .orderBy(col("weight").desc())
+)
+
+# Registramos como tabla para consultas SQL
+edgelist.createOrReplaceTempView("edgelist")
+
+print(f"Red de retweets construida. Total de aristas con weight ≥ 2: {edgelist.count()}\n")
+edgelist.show(10, truncate=False)
+
+# Calcular OUT-DEGREE (cuántos usuarios diferentes ha retuiteado cada uno)
+outDegree = (
+    edgelist
+    .groupBy("src")
+    .agg(F.countDistinct("dst").alias("outDegree"))
+    .withColumnRenamed("src", "screen_name")
+    .orderBy(col("outDegree").desc())
+)
+
+outDegree.createOrReplaceTempView("outDegree")
+
+print("Top 10 usuarios con mayor outDegree (más retuits emitidos):")
+outDegree.show(10, truncate=False)
+
+# Calcular IN-DEGREE (cuántos usuarios diferentes lo han retuiteado)
+inDegree = (
+    edgelist
+    .groupBy("dst")
+    .agg(F.countDistinct("src").alias("inDegree"))
+    .withColumnRenamed("dst", "screen_name")
+    .orderBy(col("inDegree").desc())
+)
+
+inDegree.createOrReplaceTempView("inDegree")
+
+print("Top 10 usuarios con mayor inDegree (más retuits recibidos):")
+inDegree.show(10, truncate=False)
+
+```
+
+> Muestra creada: 64063 tweets seleccionados (~1%)
+> 
+> Total de retweets detectados: 50784
+> 
+> Red de retweets construida. Total de aristas con weight ≥ 2: 469
+> 
+> +--------------+--------------+------+
+> |src           |dst           |weight|
+> +--------------+--------------+------+
+> |durobelinda   |blaancaniieves|6     |
+> |naciodigital  |naciopolitica |6     |
+> |pasandoeldia1 |pasandoeldia1 |6     |
+> |pdemocratacat |juntsxcat     |5     |
+> |saribes       |saribes       |5     |
+> |camilo06726839|vox_es        |4     |
+> |drzrz         |psoe          |4     |
+> |mariarossa004 |psoe          |4     |
+> |mariaje1956   |psoe          |4     |
+> |soniapillado70|psoe          |4     |
+> +--------------+--------------+------+
+> only showing top 10 rows
+> 
+> Top 10 usuarios con mayor outDegree (más retuits emitidos):
+> 
+> +---------------+---------+
+> |screen_name    |outDegree|
+> +---------------+---------+
+> |soniapillado70 |3        |
+> |carrasquem     |2        |
+> |perona10690463 |2        |
+> |francis67590251|2        |
+> |miguelgutiperez|2        |
+> |mariaje1956    |2        |
+> |rsarille4      |2        |
+> |zibelinam      |2        |
+> |torrijosmari   |2        |
+> |cscartagena    |2        |
+> +---------------+---------+
+> only showing top 10 rows
+> 
+> Top 10 usuarios con mayor inDegree (más retuits recibidos):
+> 
+> [Stage 205:=================================================>       (7 + 1) [/](https://eimtcld3.uoclabs.uoc.es/) 8]
+> 
+> +---------------+--------+
+> |screen_name    |inDegree|
+> +---------------+--------+
+> |psoe           |44      |
+> |ciudadanoscs   |36      |
+> |vox_es         |32      |
+> |ahorapodemos   |29      |
+> |populares      |17      |
+> |albanodante76  |9       |
+> |santi_abascal  |8       |
+> |ivanedlm       |7       |
+> |front_republica|7       |
+> |pablo_iglesias_|7       |
+> +---------------+--------+
+> only showing top 10 rows
+
+
+### **Ejercicio 10**: Distribución del Grado de Salida en una Red de Retweets (*0.75 puntos*)
+
+A partir de una muestra del 1% de los tweets, con una semilla de 42 para asegurar la reproducibilidad, realiza un análisis básico de la red de retweets. Tu objetivo es calcular y mostrar la distribución de grados de los usuarios en la red de retweets.
+
+Para ello, sigue estos pasos:
+
+- Crea una tabla de Edgelist: Define una tabla que contenga las relaciones de retweet entre usuarios, donde cada fila representa un retweet realizado de un usuario a otro.
+
+- Calcula el Grado de Salida (Out-Degree): Determina cuántos retweets ha realizado cada usuario (es decir, el número de usuarios a los que cada usuario ha retweeteado).
+
+- Obtén la Distribución de Grado de Salida: Crea una tabla que muestre cuántos usuarios tienen un determinado número de retweets realizados. Ordena los resultados por el grado de salida.
+
+```python
+from pyspark.sql.functions import col, lower, regexp_extract, count
+from pyspark.sql import functions as F
+
+# ===========================================================
+# 1️⃣ Crear muestra del 1% de los tweets
+# ===========================================================
+seed = 42
+sample = tweets.sample(fraction=0.01, seed=seed)
+print(f"Muestra creada: {sample.count()} tweets (~1%)\n")
+
+# ===========================================================
+# 2️⃣ Extraer relaciones retweet (src → dst)
+# ===========================================================
+# Un retweet tiene formato "RT @usuario: ..."
+retweets = (
+    sample
+    .filter(col("text").startswith("RT @"))
+    .withColumn("src", lower(col("user.screen_name")))  # usuario que retuitea
+    .withColumn("dst", lower(regexp_extract(col("text"), r"^RT @([A-Za-z0-9_]+):", 1)))  # usuario retuiteado
+    .filter(col("dst") != "")
+)
+
+# ===========================================================
+# 3️⃣ Crear edgelist con peso (número de retweets entre pares)
+# ===========================================================
+edgelist = (
+    retweets
+    .groupBy("src", "dst")
+    .agg(count("*").alias("weight"))
+    .orderBy(col("weight").desc())
+)
+
+edgelist.createOrReplaceTempView("edgelist")
+print(f"Edgelist creada. Total de relaciones: {edgelist.count()}\n")
+
+# ===========================================================
+# 4️⃣ Calcular el grado de salida (outDegree)
+# ===========================================================
+outDegree = (
+    edgelist
+    .groupBy("src")
+    .agg(F.countDistinct("dst").alias("outDegree"))
+    .withColumnRenamed("src", "screen_name")
+)
+
+outDegree.createOrReplaceTempView("outDegree")
+print("OutDegree calculado correctamente.\n")
+outDegree.show(10, truncate=False)
+
+# ===========================================================
+# 5️⃣ Distribución del grado de salida
+# ===========================================================
+# Contamos cuántos usuarios tienen cada valor de outDegree
+outDegreeDist = (
+    outDegree
+    .groupBy("outDegree")
+    .agg(F.count("*").alias("num_users"))
+    .orderBy(col("outDegree").asc())
+)
+
+outDegreeDist.createOrReplaceTempView("outDegreeDist")
+
+print("Distribución del grado de salida (outDegree):")
+outDegreeDist.show(20, truncate=False)
+
+```
+
+> Muestra creada: 64063 tweets (~1%)
+> 
+> Edgelist creada. Total de relaciones: 50254
+> 
+> OutDegree calculado correctamente.
+> 
+> +---------------+---------+
+> |screen_name    |outDegree|
+> +---------------+---------+
+> |splth32        |5        |
+> |hplovecraft12  |1        |
+> |vinoteco2      |2        |
+> |cagacol        |1        |
+> |republica3aviva|5        |
+> |pereirasergioba|8        |
+> |diegomo06058250|1        |
+> |alexisortegam  |1        |
+> |nievesceuta    |1        |
+> |iresaurio      |2        |
+> +---------------+---------+
+> only showing top 10 rows
+> 
+> Distribución del grado de salida (outDegree):
+> 
+> [Stage 226:=================================================>       (7 + 1) [/](https://eimtcld3.uoclabs.uoc.es/) 8]
+> 
+> +---------+---------+
+> |outDegree|num_users|
+> +---------+---------+
+> |1        |30587    |
+> |2        |4060     |
+> |3        |1342     |
+> |4        |598      |
+> |5        |312      |
+> |6        |166      |
+> |7        |88       |
+> |8        |68       |
+> |9        |35       |
+> |10       |25       |
+> |11       |16       |
+> |12       |17       |
+> |13       |8        |
+> |14       |3        |
+> |15       |2        |
+> |16       |7        |
+> |17       |1        |
+> |18       |3        |
+> |19       |1        |
+> |20       |1        |
+> +---------+---------+
+> only showing top 20 rows
