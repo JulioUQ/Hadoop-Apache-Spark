@@ -12,6 +12,8 @@ Chapter 4: Introduction to Spark MLlib, the three C's of Mchine Learning (Collab
 # Context
 
 There's been a lot of buzz about Big Data over the past few years, and it's finally become mainstream for many companies. But what is this Big Data? This course covers the fundamentals of Big Data via PySpark. Spark is a "lightning fast cluster computing" framework for Big Data. It provides a general data processing platform engine and lets you run programs up to 100x faster in memory, or 10x faster on disk, than Hadoop. You’ll use PySpark, a Python package for Spark programming and its powerful, higher-level libraries such as SparkSQL, MLlib (for machine learning), etc. You will explore the works of William Shakespeare, analyze Fifa 2018 data and perform clustering on genomic datasets. At the end of this course, you will have gained an in-depth understanding of PySpark and its application to general Big Data analysis.
+
+---
 # What is BigData?
 
 Big data is a term used to refer to the sudy and applications of data sets that are too complex for traditional data-procssing software.
