@@ -1,5 +1,5 @@
-
 # Capitulo 1. Fundamentos de BigData e Introduccion a Spark como un marco de trabajo distribuido de computacion
+
 ## 1. Introducción al Big Data
 
 El **Big Data** se refiere al estudio y aplicación de conjuntos de datos tan grandes y complejos que el software de procesamiento de datos tradicional no puede manejarlos.
@@ -8,9 +8,8 @@ El **Big Data** se refiere al estudio y aplicación de conjuntos de datos tan gr
 
 [![Imagen de](https://encrypted-tbn2.gstatic.com/licensed-image?q=tbn:ANd9GcSRfdpM66ZU_p3C4mMJiYrh-PT4wDTx1B_ash_AqVdc7Mzkwp2x2n1Qd_ptOd2VHH_qZVBhAJzwifmOydFDC8mpZ8W8vOLfmYgeMsI3upmdPpMrUWw)Se abre en una ventana nueva](https://encrypted-tbn2.gstatic.com/licensed-image?q=tbn:ANd9GcSRfdpM66ZU_p3C4mMJiYrh-PT4wDTx1B_ash_AqVdc7Mzkwp2x2n1Qd_ptOd2VHH_qZVBhAJzwifmOydFDC8mpZ8W8vOLfmYgeMsI3upmdPpMrUWw)
 
-Shutterstock
-
 Para definir Big Data, nos basamos en estas tres características principales:
+
 1. **Volumen (Volume):** La cantidad de datos generados.
 2. **Variedad (Variety):** Los diferentes tipos de fuentes y formatos (texto, video, logs, bases de datos, etc.).
 3. **Velocidad (Velocity):** La rapidez con la que se generan y mueven los datos (en tus notas originales, "Speed" estaba bajo Volumen, pero en realidad define a la Velocidad).
@@ -24,14 +23,18 @@ Para definir Big Data, nos basamos en estas tres características principales:
 - **Real-time Processing (Procesamiento en Tiempo Real):** Procesamiento inmediato de los datos según llegan.
 
 ---
+
 ## 2. Sistemas de Procesamiento: Hadoop vs. Spark
 
 Aquí es fundamental entender la evolución tecnológica.
+
 ### Hadoop / MapReduce
 
 Es un framework escalable y tolerante a fallos escrito en Java.
+
 - **Open Source.**
 - Enfocado principalmente en **Batch processing** (lotes). Escribe mucho en disco duro, lo que lo hace más lento para procesos iterativos.
+
 ### Apache Spark
 
 Es un sistema de computación en clúster de propósito general y extremadamente rápido.
@@ -40,10 +43,10 @@ Es un sistema de computación en clúster de propósito general y extremadamente
 - Soporta tanto **Batch** como **Real-time processing**.
 - **Nota:** Hoy en día, Spark se prefiere sobre MapReduce por su velocidad y facilidad de uso.
 
-|**Característica**|**Hadoop MapReduce**|**Apache Spark**|
-|---|---|---|
-|**Velocidad**|Lento (mucha escritura en disco)|Muy rápido (procesamiento en memoria)|
-|**Uso**|Procesamiento por lotes|Lotes, Streaming, ML, SQL|
+| **Característica** | **Hadoop MapReduce**             | **Apache Spark**                      |
+| ------------------ | -------------------------------- | ------------------------------------- |
+| **Velocidad**      | Lento (mucha escritura en disco) | Muy rápido (procesamiento en memoria) |
+| **Uso**            | Procesamiento por lotes          | Lotes, Streaming, ML, SQL             |
 
 ---
 
@@ -59,8 +62,6 @@ Es un sistema de computación en clúster de propósito general y extremadamente
 
 [![Imagen de](https://encrypted-tbn1.gstatic.com/licensed-image?q=tbn:ANd9GcQI-tOCofZyfvkshnf-qqSbAk-5OC-aeuNM52dmJErVkcolOssN4aIMEnuoD8zRJC9rObYZ1aXZK0Lfh7EA-fdji9gGT11AfWKpcp-f1-Y9UTlG7qM)Se abre en una ventana nueva](https://encrypted-tbn1.gstatic.com/licensed-image?q=tbn:ANd9GcQI-tOCofZyfvkshnf-qqSbAk-5OC-aeuNM52dmJErVkcolOssN4aIMEnuoD8zRJC9rObYZ1aXZK0Lfh7EA-fdji9gGT11AfWKpcp-f1-Y9UTlG7qM)
 
-Shutterstock
-
 Spark no es solo una herramienta, es un conjunto de librerías construidas sobre un núcleo:
 
 1. **Spark SQL:** Para trabajar con datos estructurados.
@@ -73,7 +74,7 @@ Spark no es solo una herramienta, es un conjunto de librerías construidas sobre
 
 1. **Modo Local:** Tu propia máquina (laptop). Ideal para prototipar, testear y aprender.
 2. **Modo Clúster:** Conjunto de máquinas definidas. Ideal para producción.
-    - _Flujo de trabajo:_ Desarrollas en Local -> Despliegas en Clúster (sin cambiar el código).
+   - _Flujo de trabajo:_ Desarrollas en Local -> Despliegas en Clúster (sin cambiar el código).
 
 ---
 
@@ -112,6 +113,7 @@ Hay dos formas básicas de empezar a trabajar con datos desde el `sc`:
 2. `sc.textFile("archivo.txt")`: Carga datos desde un archivo externo.
 
 ---
+
 ## 6. Funciones Lambda en Python (Esencial para Spark)
 
 Spark usa mucho la programación funcional (map, filter), por lo que dominar las funciones **lambda** (anónimas) es vital.
@@ -137,17 +139,14 @@ Estas funciones toman una lista y le aplican una lógica a cada elemento.
 
 **1. map(función, lista):** Aplica la función a _todos_ los elementos.
 
-
 ```Python
 items = [1, 2, 3, 4]
 # Suma 2 a cada número
-resultado = list(map(lambda x: x + 2, items)) 
+resultado = list(map(lambda x: x + 2, items))
 # Resultado: [3, 4, 5, 6]
 ```
 
 **2. filter(función, lista):** Retorna solo los elementos donde la función es `True`._Nota:_ En tus notas originales había un error de sintaxis en esta parte. La forma correcta es:
-
-
 
 ```Python
 items = [1, 2, 3, 4]
@@ -162,8 +161,15 @@ Para asegurarnos de que esta base ha quedado clara antes de pasar al Capítulo 2
 
 Si quisieras usar `sc.parallelize` para crear un set de datos con los números del 1 al 10, y luego quisieras quedarte **solo con los mayores de 5**, ¿cómo combinarías `filter` y una función `lambda` para hacerlo conceptualmente?
 
----
+```python
 
+rdd = sc.parallelize(range(1, 11))
+rdd_mayores_5 = rdd.filter(lambda x: x > 5)
+print(rdd_mayores_5.collect())
+
+```
+
+---
 
 # Capitulo 2. Introduccion a RDDs, diferentes propiedades de RDDs, metodologias de creacion de RDDs y operaciones de RDD (Transformaciones y actiones)
 
@@ -193,7 +199,7 @@ Se usa para convertir listas de Python en RDDs.
 numRDD = sc.parallelize([1, 2, 3, 4])
 helloRDD = sc.parallelize("Hello world")
 
-print(type(helloRDD)) 
+print(type(helloRDD))
 # Salida esperada: <class 'pyspark.rdd.RDD'>
 ```
 
@@ -247,25 +253,24 @@ En Spark, las operaciones se dividen en dos tipos. Es vital entender la diferenc
     RDD = sc.parallelize([1, 2, 3, 4])
     RDD_filter = RDD.filter(lambda x: x > 2)
     # Resultado conceptual: [3, 4]
- ```
-    
+```
+
 - **flatMap():** Similar a map, pero cada elemento de entrada puede mapearse a 0 o más elementos de salida (aplana el resultado).
-   
-    ```Python
-    RDD = sc.parallelize(["Hello world", "How are you"])
-    RDD_flatmap = RDD.flatMap(lambda x: x.split(" "))
-    # Resultado conceptual: ["Hello", "world", "How", "are", "you"]
-    ```
+
+  ```Python
+  RDD = sc.parallelize(["Hello world", "How are you"])
+  RDD_flatmap = RDD.flatMap(lambda x: x.split(" "))
+  # Resultado conceptual: ["Hello", "world", "How", "are", "you"]
+  ```
 
 - **union():** Une dos RDDs.
-    
-    ```Python
-    inputRDD = sc.textFile("logs.txt")
-    errorRDD = inputRDD.filter(lambda x: "error" in x.split())
-    warningsRDD = inputRDD.filter(lambda x: "warnings" in x.split())
-    
-    combinedRDD = errorRDD.union(warningsRDD)
-    ```
+  ```Python
+  inputRDD = sc.textFile("logs.txt")
+  errorRDD = inputRDD.filter(lambda x: "error" in x.split())
+  warningsRDD = inputRDD.filter(lambda x: "warnings" in x.split())
+
+  combinedRDD = errorRDD.union(warningsRDD)
+  ```
 
 ### Acciones Básicas
 
@@ -281,6 +286,7 @@ En Spark, las operaciones se dividen en dos tipos. Es vital entender la diferenc
 Los datasets de la vida real suelen ser pares de **Clave/Valor** (Key/Value). Spark tiene operaciones especiales para este tipo de datos.
 
 - **Estructura:** Tuplas de Python `(Clave, Valor)`.
+
 ### Creación de Pair RDDs
 
 ```Python
@@ -296,50 +302,48 @@ pairRDD_RDD = regularRDD.map(lambda s: (s.split(' ')[0], s.split(' ')[1]))
 ### Transformaciones en Pair RDDs
 
 - **reduceByKey(func):** Combina valores con la misma clave. Es muy eficiente porque realiza una combinación parcial en cada nodo antes de enviar datos a través de la red.
-    
-    ```Python
-    regularRDD = sc.parallelize([('Messi', 23), ('Ronaldo', 34), ('Neymar', 22), ('Messi', 24)])
-    
-    # Suma los valores de las claves iguales (ej. Messi: 23 + 24 = 47)
-    pairRDD_reduce = regularRDD.reduceByKey(lambda x, y: x + y)
-    pairRDD_reduce.collect()
-    ```
+
+  ```Python
+  regularRDD = sc.parallelize([('Messi', 23), ('Ronaldo', 34), ('Neymar', 22), ('Messi', 24)])
+
+  # Suma los valores de las claves iguales (ej. Messi: 23 + 24 = 47)
+  pairRDD_reduce = regularRDD.reduceByKey(lambda x, y: x + y)
+  pairRDD_reduce.collect()
+  ```
 
 - **sortByKey():** Ordena el RDD por su clave.
-    
-    ```Python
-    # Invertimos (Valor, Clave) para ordenar, y ordenamos descendente
-    pairRDD_rev = pairRDD_reduce.map(lambda x: (x[1], x[0]))
-    pairRDD_rev.sortByKey(ascending=False).collect()
-    ```
+
+  ```Python
+  # Invertimos (Valor, Clave) para ordenar, y ordenamos descendente
+  pairRDD_rev = pairRDD_reduce.map(lambda x: (x[1], x[0]))
+  pairRDD_rev.sortByKey(ascending=False).collect()
+  ```
 
 - **groupByKey():** Agrupa todos los valores de la misma clave en un iterable.
 
-    - _Nota:_ `groupByKey` puede causar problemas de memoria si una clave tiene demasiados valores. Se prefiere `reduceByKey` cuando es posible.    
-    
-    ```Python
-    airports = [('US', 'JFK'), ('UK', 'LHR'), ('FR', 'CDG'), ('US', 'SFO')]
-    rdd_air = sc.parallelize(airports)
-    pairRDD_group = rdd_air.groupByKey().collect()
-    
-    for pais, aeropuertos in pairRDD_group:
-        print(pais, list(aeropuertos))
-    # Salida: US ['JFK', 'SFO'], UK ['LHR']...
-    ```
-    
+  - _Nota:_ `groupByKey` puede causar problemas de memoria si una clave tiene demasiados valores. Se prefiere `reduceByKey` cuando es posible.
+
+  ```Python
+  airports = [('US', 'JFK'), ('UK', 'LHR'), ('FR', 'CDG'), ('US', 'SFO')]
+  rdd_air = sc.parallelize(airports)
+  pairRDD_group = rdd_air.groupByKey().collect()
+
+  for pais, aeropuertos in pairRDD_group:
+      print(pais, list(aeropuertos))
+  # Salida: US ['JFK', 'SFO'], UK ['LHR']...
+  ```
+
 - **join():** Une dos RDDs basándose en sus claves.
-    
-    Python
-    
-    ```
-    # (Nombre, Edad)
-    RDD1 = sc.parallelize([('Messi', 34), ('Ronaldo', 32)])
-    # (Nombre, Goles)
-    RDD2 = sc.parallelize([('Messi', 100), ('Ronaldo', 80)])
-    
-    RDD1.join(RDD2).collect()
-    # Resultado: [('Messi', (34, 100)), ('Ronaldo', (32, 80))]
-    ```
+  Python
+  ```
+  # (Nombre, Edad)
+  RDD1 = sc.parallelize([('Messi', 34), ('Ronaldo', 32)])
+  # (Nombre, Goles)
+  RDD2 = sc.parallelize([('Messi', 100), ('Ronaldo', 80)])
+
+  RDD1.join(RDD2).collect()
+  # Resultado: [('Messi', (34, 100)), ('Ronaldo', (32, 80))]
+  ```
 
 ### Acciones en Pair RDDs
 
@@ -351,20 +355,19 @@ pairRDD_RDD = regularRDD.map(lambda s: (s.split(' ')[0], s.split(' ')[1]))
 ## 4. Acciones Avanzadas de RDD
 
 - **reduce(func):** Agrega todos los elementos del RDD usando una función (debe ser conmutativa y asociativa).
-    
-    ```Python
-    x = [1, 3, 4, 6]
-    RDD = sc.parallelize(x)
-    # Suma todos los números: 1+3+4+6 = 14
-    RDD.reduce(lambda x, y : x + y)    ```
-    
+  ````Python
+  x = [1, 3, 4, 6]
+  RDD = sc.parallelize(x)
+  # Suma todos los números: 1+3+4+6 = 14
+  RDD.reduce(lambda x, y : x + y)    ```
+
+  ````
 - **saveAsTextFile():** Guarda el RDD en disco. Crea un directorio y guarda cada partición como un archivo separado (`part-00000`, `part-00001`...).
 - **coalesce(N):** Reduce el número de particiones. Útil antes de guardar un archivo si quieres menos archivos de salida.
-    
-    ```Python
-    # Reduce a 1 partición y guarda (creará un solo archivo de texto)
-    RDD.coalesce(1).saveAsTextFile("tempFile")
-    ```
+  ```Python
+  # Reduce a 1 partición y guarda (creará un solo archivo de texto)
+  RDD.coalesce(1).saveAsTextFile("tempFile")
+  ```
 
 ---
 
@@ -390,24 +393,24 @@ Es el punto de entrada único para trabajar con DataFrames (reemplaza la necesid
 
 1. **Desde un RDD (con esquema):**
 
-    ```Python
-    # Datos
-    iphones_RDD = sc.parallelize([("XS", 2018, 5.8, 1000), ("XR", 2018, 6.1, 750)])
-    # Nombres de columnas
-    names = ["Model", "Year", "ScreenSize", "Price"]
-    
-    iphones_df = spark.createDataFrame(iphones_RDD, schema=names)
-    ```
+   ```Python
+   # Datos
+   iphones_RDD = sc.parallelize([("XS", 2018, 5.8, 1000), ("XR", 2018, 6.1, 750)])
+   # Nombres de columnas
+   names = ["Model", "Year", "ScreenSize", "Price"]
+
+   iphones_df = spark.createDataFrame(iphones_RDD, schema=names)
+   ```
 
 2. **Desde fuentes de datos (CSV, JSON, TXT):**
-    
-    ```Python
-    # inferSchema=True le dice a Spark que adivine los tipos de datos (int vs string)
-    # header=True usa la primera fila como nombres de columna
-    df_csv = spark.read.csv("people.csv", header=True, inferSchema=True)
-    
-    df_json = spark.read.json("people.json")
-    ```
+
+   ```Python
+   # inferSchema=True le dice a Spark que adivine los tipos de datos (int vs string)
+   # header=True usa la primera fila como nombres de columna
+   df_csv = spark.read.csv("people.csv", header=True, inferSchema=True)
+
+   df_json = spark.read.json("people.json")
+   ```
 
 ### Operaciones Básicas en DataFrames
 
@@ -430,7 +433,6 @@ Esta sección cubre mucho terreno técnico. Hay un concepto clave en el apartado
 
 ---
 
-
 # Capítulo 3. Introduccion a Spark SQL, abstraccion de dataframes, creacion, operaciones y visualizacion de BigData a partir de Dataframes
 
 ## 1. Interacción con Spark SQL
@@ -440,14 +442,13 @@ Spark nos ofrece dos "idiomas" para hablar con los datos. Puedes elegir el que m
 ### API de DataFrames vs. Consultas SQL
 
 1. **DataFrame API (Lenguaje de Dominio Específico - DSL):**
-    - Es programático. Construyes las consultas encadenando métodos (`.select()`, `.filter()`).
-    - Permite comprobación de errores en tiempo de compilación (en lenguajes tipados, aunque menos en Python).
-    - A menudo es más fácil de construir dinámicamente dentro de scripts de Python.
-        
+   - Es programático. Construyes las consultas encadenando métodos (`.select()`, `.filter()`).
+   - Permite comprobación de errores en tiempo de compilación (en lenguajes tipados, aunque menos en Python).
+   - A menudo es más fácil de construir dinámicamente dentro de scripts de Python.
 2. **Consultas SQL:**
-    - Usa el estándar SQL (ANSI SQL).
-    - Es conciso, legible y portable (si sabes SQL, ya sabes usar Spark SQL).
-    - **Importante:** Internamente, Spark convierte ambas formas (API y SQL) al mismo plan de ejecución optimizado (Catalyst Optimizer), por lo que **no hay diferencia de rendimiento**.
+   - Usa el estándar SQL (ANSI SQL).
+   - Es conciso, legible y portable (si sabes SQL, ya sabes usar Spark SQL).
+   - **Importante:** Internamente, Spark convierte ambas formas (API y SQL) al mismo plan de ejecución optimizado (Catalyst Optimizer), por lo que **no hay diferencia de rendimiento**.
 
 ---
 
@@ -554,7 +555,6 @@ Es el método más común pero también el más **peligroso**.
 
 > **⚠️ ADVERTENCIA CRÍTICA:** Solo usa `toPandas()` cuando el resultado sea pequeño (ej. después de un `groupBy` o un `limit`). Si intentas hacer `toPandas()` de un dataset de 100GB, tu programa fallará por "Out of Memory" (OOM), ya que intenta meter todo en la RAM de tu ordenador local.
 
-
 ```Python
 test_df = spark.read.csv("test.csv", header=True, inferSchema=True)
 
@@ -588,13 +588,13 @@ hdf.cols["Age"].hist()
 
 Es fundamental entender cuándo usar cada uno.
 
-|**Característica**|**Pandas DataFrame**|**PySpark DataFrame**|
-|---|---|---|
-|**Ubicación de Datos**|**In-memory** (RAM de una sola máquina).|**Distribuido** (a través de múltiples nodos del clúster).|
-|**Evaluación**|**Eager (Ansiosa):** El resultado se genera inmediatamente al ejecutar la línea.|**Lazy (Perezosa):** Solo se construye un plan de ejecución (DAG). Nada sucede hasta que llamas a una Acción.|
-|**Mutabilidad**|**Mutable:** Puedes cambiar valores in-situ.|**Inmutable:** No puedes cambiar un RDD/DF original; creas uno nuevo transformado.|
-|**Capacidad**|Limitada por la RAM de tu servidor.|Limitada por el tamaño del clúster (puede escalar a Petabytes).|
-|**Operaciones**|API muy rica y madura para estadística compleja.|API enfocada en transformaciones de datos masivos y SQL.|
+| **Característica**     | **Pandas DataFrame**                                                             | **PySpark DataFrame**                                                                                         |
+| ---------------------- | -------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| **Ubicación de Datos** | **In-memory** (RAM de una sola máquina).                                         | **Distribuido** (a través de múltiples nodos del clúster).                                                    |
+| **Evaluación**         | **Eager (Ansiosa):** El resultado se genera inmediatamente al ejecutar la línea. | **Lazy (Perezosa):** Solo se construye un plan de ejecución (DAG). Nada sucede hasta que llamas a una Acción. |
+| **Mutabilidad**        | **Mutable:** Puedes cambiar valores in-situ.                                     | **Inmutable:** No puedes cambiar un RDD/DF original; creas uno nuevo transformado.                            |
+| **Capacidad**          | Limitada por la RAM de tu servidor.                                              | Limitada por el tamaño del clúster (puede escalar a Petabytes).                                               |
+| **Operaciones**        | API muy rica y madura para estadística compleja.                                 | API enfocada en transformaciones de datos masivos y SQL.                                                      |
 
 ---
 
@@ -623,10 +623,9 @@ Ofrece herramientas para:
 ### ¿Por qué usar PySpark MLlib en lugar de Scikit-learn?
 
 - **Scikit-learn:** Excelente librería, pero diseñada para ejecutarse en **una sola máquina**. Si tus datos no caben en la memoria RAM de tu ordenador, Scikit-learn fallará.
-    
 - **Spark MLlib:** Diseñada para procesamiento **paralelo en un clúster**.
-    - Soporta Java, Scala, Python y R.
-    - Utiliza iteraciones en memoria (mucho más rápido que MapReduce en disco).
+  - Soporta Java, Scala, Python y R.
+  - Utiliza iteraciones en memoria (mucho más rápido que MapReduce en disco).
 
 ---
 
@@ -732,22 +731,22 @@ Aprendizaje supervisado donde etiquetamos datos en clases (Binaria o Multiclase)
 MLlib basado en RDDs requiere estructuras de datos muy específicas.
 
 1. **Vectores:** Representan las características (features).
-    - _Dense (Denso):_ Array normal `[1.0, 2.0, 0.0]`.
-    - _Sparse (Disperso):_ Ahorra memoria guardando solo índices con valores distintos de cero. Útil cuando tienes millones de columnas (ej. palabras en un texto).
-    
-    ```Python
-    from pyspark.mllib.linalg import Vectors
-    denseVec = Vectors.dense([1.0, 2.0, 3.0])
-    # Tamaño 4, en el índice 1 hay un 1.0, en el índice 3 hay un 5.5
-    sparseVec = Vectors.sparse(4, {1: 1.0, 3: 5.5}) 
-    ```
-    
+
+   - _Dense (Denso):_ Array normal `[1.0, 2.0, 0.0]`.
+   - _Sparse (Disperso):_ Ahorra memoria guardando solo índices con valores distintos de cero. Útil cuando tienes millones de columnas (ej. palabras en un texto).
+
+   ```Python
+   from pyspark.mllib.linalg import Vectors
+   denseVec = Vectors.dense([1.0, 2.0, 3.0])
+   # Tamaño 4, en el índice 1 hay un 1.0, en el índice 3 hay un 5.5
+   sparseVec = Vectors.sparse(4, {1: 1.0, 3: 5.5})
+   ```
+
 1. **LabeledPoint:** Combina la etiqueta (respuesta correcta) con las características.
-    - Etiqueta 0.0: Negativo.
-    - Etiqueta 1.0: Positivo.
+   - Etiqueta 0.0: Negativo.
+   - Etiqueta 1.0: Positivo.
 
 ### Regresión Logística
-
 
 ```Python
 from pyspark.mllib.regression import LabeledPoint
@@ -767,6 +766,7 @@ print(lrm.predict([1.0, 0.0])) # Debería predecir 1
 ```
 
 ---
+
 ## 5. Clustering (Agrupamiento)
 
 Aprendizaje no supervisado. El algoritmo más común es **K-Means**.
@@ -776,8 +776,6 @@ Aprendizaje no supervisado. El algoritmo más común es **K-Means**.
 El objetivo es encontrar `K` centros y agrupar los puntos más cercanos a cada centro.
 
 ![Imagen de K-means clustering process](https://encrypted-tbn2.gstatic.com/licensed-image?q=tbn:ANd9GcT4Yxjx2NtZoKrH49_G6eLmaLtonsrS5teLTB5h-4VXMlHZregArFMBIf0bm-heglnsvrJiv9YMKQg7wQykRSzpwkDrU8oYHK2qU5MuIHIDXHymIYA)
-
-
 
 ```Python
 # Carga y limpieza de datos
@@ -798,7 +796,6 @@ print(model.clusterCenters)
 ### Evaluación del Modelo (WSSSE)
 
 En Clustering no tenemos "respuestas correctas", así que medimos la **Suma de los Errores Cuadráticos Dentro del Conjunto (WSSSE)**. Básicamente: ¿Qué tan compactos son mis grupos? Cuanto menor sea el número, más apretados están los grupos.
-
 
 ```Python
 from math import sqrt
