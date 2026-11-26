@@ -1,88 +1,50 @@
-# 🧠 Hadoop & Apache Spark — Fundamentos de Big Data
+<div align="center">
 
-Este repositorio contiene materiales teóricos y prácticos del módulo **Big Data Fundamentals**, centrado en el análisis de datos masivos con **Apache Hadoop** y **Apache Spark**.
+![Ingeniería De Datos](https://img.shields.io/badge/INGENIER%C3%8DA_DE_DATOS-EF6C00?style=for-the-badge)
 
-## 📘 Descripción del módulo
+# Procesamiento por lotes con Hadoop y Spark
 
-Las herramientas y tecnologías para el análisis de datos masivos (**Big Data**) están en constante evolución. El objetivo de este módulo no es solo enumerarlas, sino **proporcionar las bases teóricas necesarias** para comprender este ecosistema y poder analizar de forma autónoma las diferentes alternativas existentes.
+Procesamiento distribuido de datos con HDFS, RDDs, DataFrames de Spark y Hive, con la teoría de MapReduce y de las arquitecturas de big data.
 
-A lo largo del módulo se abordan tres grandes bloques:
+![PySpark](https://img.shields.io/badge/PySpark-E25A1C?style=flat-square&logo=apachespark&logoColor=white) ![Apache Hadoop](https://img.shields.io/badge/Apache_Hadoop-66CCFF?style=flat-square&logo=apachehadoop&logoColor=white) ![Hive](https://img.shields.io/badge/Hive-FDEE21?style=flat-square&logo=apachehive&logoColor=white) ![Python](https://img.shields.io/badge/Python-3776AB?style=flat-square&logo=python&logoColor=white) ![Jupyter](https://img.shields.io/badge/Jupyter-F37626?style=flat-square&logo=jupyter&logoColor=white)
 
-1. **Modelos de programación en entornos de datos masivos**
-    - Introducción al modelo **MapReduce** y su implementación en **Apache Hadoop**.
-    - Ventajas, limitaciones y principales componentes del ecosistema Hadoop.
-        
-2. **Procesamiento distribuido con Apache Spark**
-    - Análisis de su arquitectura, funcionamiento interno y diferencias respecto a MapReduce.
-    - Programación con **RDDs** y **DataFrames** usando **PySpark**.
-    - Aplicaciones prácticas en el tratamiento de datos estructurados y no estructurados.
-        
-3. **Arquitecturas de procesamiento de datos masivos**
-    - Introducción a la **arquitectura Lambda** como enfoque integral de procesamiento por lotes.
-    - Breve revisión de arquitecturas basadas en **GPU** y su aplicación en Big Data.
+</div>
 
+---
 
-## 🎯 Objetivos y competencias
+## Descripción general
 
-### Del módulo
+Proyecto práctico de procesamiento por lotes en un clúster: almacenamiento en HDFS, extracción de conocimiento de fuentes heterogéneas con RDDs, consultas con DataFrames y Hive, y muestreo de grandes volúmenes. Incluye la teoría de MapReduce, del ecosistema Hadoop y de la arquitectura Lambda.
 
-- Comprender los **modelos de procesamiento distribuido** y sus aplicaciones.
-- Conocer los principales **frameworks de Big Data**, como **Hadoop** y **Spark**.
-- Familiarizarse con las **herramientas y servicios** para el procesamiento distribuido.
-- Entender la **arquitectura Lambda** y su papel en el procesamiento por lotes.
+## Contenido
 
-### De la parte práctica
+| Parte | Contenido |
+| --- | --- |
+| [Proyecto](PEC%202) | Sistema de ficheros HDFS, transformaciones y acciones con RDDs, DataFrames estructurados, bases de datos Hive y operaciones complejas, muestreo y datos relacionales |
+| [Big Data Fundamentals with PySpark](DataCamp%20Big%20Data%20Fundamentals%20with%20PySpark) | Apuntes y ejercicios: RDDs, Spark SQL, MLlib (recomendador de películas y filtro de spam), con certificado de DataCamp |
+| [Teoría](Teoria%20y%20videos) | MapReduce y Hadoop, gestores de recursos, sistemas de procesamiento distribuido |
 
-- Profundizar en el **paradigma Big Data**.
-- Trabajar con datos en entornos **Apache Spark**.
-- Aplicar el modelo **MapReduce** y su equivalencia en Spark.
-- Usar **RDDs**, **PairRDDs** y la **API PySpark** para análisis y modelado de datos.
+## Tecnologías y herramientas
 
-## Contenido del repositorio
+| Ámbito | Herramientas |
+| --- | --- |
+| Procesamiento | Apache Spark (PySpark), RDDs y DataFrames |
+| Almacenamiento | HDFS, Hive |
+| Entorno | Jupyter sobre un clúster remoto |
 
-```
-HADOOP-APACHE-SPARK/  
-│  
-├── DataCamp Big Data Fundamentals with PySpark/  
-│   ├── Actividad_Batch_ES.ipynb  
-│   ├── Big Data Fundamentals with PySpark.md  
-│   ├── certificate.pdf  
-│   ├── PySpark_RDD_Cheat_Sheet.pdf  
-│   └── README.md  
-│  
-├── PEC 2/  
-│   ├── Actividad_Batch_ES.ipynb
-│   └── credentials.md  
-│  
-├── Teoría y videos/  
-│   ├── Gestores de recursos.pdf  
-│   ├── HadoopDefinitiveGuide.pdf  
-│   ├── Sistemas de procesamiento distribuido en ...pdf  
-│   ├── Tunneling_SSH.pdf  
-│   ├── Uso de dataframes con Apache Spark.mp4  
-│   └── Uso de RDDs con Apache Spark.mp4  
-│  
-└── README.md  
-```  
+## Instalación y uso
 
-## 🧠 Recursos de referencia
+El cuaderno del proyecto está en `PEC 2/Notebooks/` y se ejecutó en un clúster con Spark y HDFS. Para revisarlo en local basta con Jupyter; para ejecutarlo hace falta un entorno con PySpark y acceso a HDFS.
 
-📄 [RDD Programming Guide](https://archive.apache.org/dist/spark/docs/2.4.0/rdd-programming-guide.html)  
-📄 [API PySpark](https://archive.apache.org/dist/spark/docs/2.4.0/api/python/index.html)
-📄 [Spark SQL, DataFrames and Datasets Guide](https://archive.apache.org/dist/spark/docs/2.4.0/sql-getting-started.html)
-📄 [HDFS Commands Guide](https://hadoop.apache.org/docs/current/hadoop-project-dist/hadoop-hdfs/HDFSCommands.html)
+## Aspectos técnicos destacados
 
-## 🏅 Certificación
+- El mismo problema resuelto con RDDs y con DataFrames para comparar ambos niveles de abstracción.
+- Consultas sobre Hive y muestreo para trabajar con volúmenes grandes.
 
-Este repositorio incluye el certificado de finalización del curso **Big Data Fundamentals with PySpark** realizado en **DataCamp**, enfocado en:
+## Autor
 
-- Transformaciones y acciones con **RDDs**
-- Consultas con **SparkSQL**
-- Modelado con **MLlib**
-- Construcción de un recomendador de películas y un filtro de spam
+**Julio Úbeda Quesada** · Data Scientist
 
-## 💬 Autor
+[![Portfolio](https://img.shields.io/badge/Portfolio-0B2545?style=flat-square&logo=astro&logoColor=white)](https://juliouq.github.io/Portfolio-Web---JulioUQ/es/) [![LinkedIn](https://img.shields.io/badge/LinkedIn-0A66C2?style=flat-square)](https://www.linkedin.com/in/juliouq/) [![GitHub](https://img.shields.io/badge/GitHub-181717?style=flat-square&logo=github&logoColor=white)](https://github.com/JulioUQ)
 
-**Julio Úbeda Quesada**  
-🔗 [LinkedIn](https://www.linkedin.com/in/tu-perfil/)  
-📧 Contacto: julioubedaquesada@gmail.com
+<sub>Material elaborado durante el Máster Universitario en Ciencia de Datos.</sub>
