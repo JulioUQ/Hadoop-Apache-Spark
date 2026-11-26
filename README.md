@@ -1,8 +1,21 @@
-# 🧠 Hadoop & Apache Spark — Fundamentos de Big Data
+# Prácticas · Procesamiento distribuido con Hadoop y Spark
+
+Material académico y ejercicios sobre almacenamiento distribuido y procesamiento por lotes con PySpark.
+
+## Tecnologías
+
+Hadoop, HDFS y PySpark
+
+## Explorar el repositorio
+
+- [`PEC 2/Notebooks`](./PEC%202/Notebooks)
+- [`DataCamp Big Data Fundamentals with PySpark`](./DataCamp%20Big%20Data%20Fundamentals%20with%20PySpark)
+
+## Documentación
 
 Este repositorio contiene materiales teóricos y prácticos del módulo **Big Data Fundamentals**, centrado en el análisis de datos masivos con **Apache Hadoop** y **Apache Spark**.
 
-## 📘 Descripción del módulo
+#### 📘 Descripción del módulo
 
 Las herramientas y tecnologías para el análisis de datos masivos (**Big Data**) están en constante evolución. El objetivo de este módulo no es solo enumerarlas, sino **proporcionar las bases teóricas necesarias** para comprender este ecosistema y poder analizar de forma autónoma las diferentes alternativas existentes.
 
@@ -22,23 +35,23 @@ A lo largo del módulo se abordan tres grandes bloques:
     - Breve revisión de arquitecturas basadas en **GPU** y su aplicación en Big Data.
 
 
-## 🎯 Objetivos y competencias
+#### 🎯 Objetivos y competencias
 
-### Del módulo
+##### Del módulo
 
 - Comprender los **modelos de procesamiento distribuido** y sus aplicaciones.
 - Conocer los principales **frameworks de Big Data**, como **Hadoop** y **Spark**.
 - Familiarizarse con las **herramientas y servicios** para el procesamiento distribuido.
 - Entender la **arquitectura Lambda** y su papel en el procesamiento por lotes.
 
-### De la parte práctica
+##### De la parte práctica
 
 - Profundizar en el **paradigma Big Data**.
 - Trabajar con datos en entornos **Apache Spark**.
 - Aplicar el modelo **MapReduce** y su equivalencia en Spark.
 - Usar **RDDs**, **PairRDDs** y la **API PySpark** para análisis y modelado de datos.
 
-## Contenido del repositorio
+#### Contenido del repositorio
 
 ```
 HADOOP-APACHE-SPARK/  
@@ -65,14 +78,14 @@ HADOOP-APACHE-SPARK/
 └── README.md  
 ```  
 
-## 🧠 Recursos de referencia
+#### 🧠 Recursos de referencia
 
 📄 [RDD Programming Guide](https://archive.apache.org/dist/spark/docs/2.4.0/rdd-programming-guide.html)  
 📄 [API PySpark](https://archive.apache.org/dist/spark/docs/2.4.0/api/python/index.html)
 📄 [Spark SQL, DataFrames and Datasets Guide](https://archive.apache.org/dist/spark/docs/2.4.0/sql-getting-started.html)
 📄 [HDFS Commands Guide](https://hadoop.apache.org/docs/current/hadoop-project-dist/hadoop-hdfs/HDFSCommands.html)
 
-## 🏅 Certificación
+#### 🏅 Certificación
 
 Este repositorio incluye el certificado de finalización del curso **Big Data Fundamentals with PySpark** realizado en **DataCamp**, enfocado en:
 
@@ -81,8 +94,8 @@ Este repositorio incluye el certificado de finalización del curso **Big Data Fu
 - Modelado con **MLlib**
 - Construcción de un recomendador de películas y un filtro de spam
 
-## 💬 Autor
+#### 💬 Autor
 
 **Julio Úbeda Quesada**  
-🔗 [LinkedIn](https://www.linkedin.com/in/tu-perfil/)  
+🔗 [LinkedIn](https://www.linkedin.com/in/juliouq/)
 📧 Contacto: julioubedaquesada@gmail.com
